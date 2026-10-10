@@ -1,0 +1,351 @@
+<Window x:Class="GitConfigTool.Views.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        mc:Ignorable="d"
+        Title="GitConfigTool_1.0.0"
+        Icon="pack://application:,,,/assets/icon.ico"
+        Height="720" Width="1100"
+        MinHeight="600" MinWidth="900"
+        WindowStartupLocation="CenterScreen"
+        Background="#FFF3F3F3">
+
+    <Window.Resources>
+        <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+    </Window.Resources>
+
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <!-- 顶部标题栏 -->
+        <Border Grid.Row="0" Background="#FF1E1E2E" Padding="16,12">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
+                    <TextBlock Text="GitConfigTool" FontSize="22" FontWeight="Bold" Foreground="White"/>
+                    <TextBlock Text="  |  Windows Git 多账号管理" FontSize="14" Foreground="#FFAAAAAA" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                </StackPanel>
+                <StackPanel Grid.Column="1" Orientation="Horizontal">
+                    <Button Content="刷新全部" Command="{Binding RefreshCommand}" Style="{StaticResource SecondaryButton}"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+
+        <!-- 主体 -->
+        <TabControl Grid.Row="1" Margin="12" SelectedIndex="{Binding SelectedTabIndex}" Background="Transparent">
+
+            <!-- ========== 标签页1：GitConfig ========== -->
+            <TabItem Header="GitConfig">
+                <Grid Margin="8">
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="320"/>
+                        <ColumnDefinition Width="*"/>
+                    </Grid.ColumnDefinitions>
+
+                    <!-- 左侧档案列表 -->
+                    <DockPanel Grid.Column="0" Margin="0,0,12,0">
+                        <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
+                            <Button Content="新建档案" Command="{Binding AddProfileCommand}"/>
+                            <Button Content="捕获当前" Command="{Binding CaptureCurrentAsProfileCommand}" Style="{StaticResource SecondaryButton}" ToolTip="将当前 Git 用户配置保存为新档案"/>
+                        </StackPanel>
+                        <!-- 配置文件路径：可点击，跳转到所在目录 -->
+                        <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,10"
+                                   TextTrimming="CharacterEllipsis" Cursor="Hand"
+                                   MouseLeftButtonUp="OpenProfilesFolder_Click"
+                                   ToolTip="{Binding GitConfigPath}">
+                            <TextBlock.Style>
+                                <Style TargetType="TextBlock">
+                                    <Setter Property="Foreground" Value="#FF888888"/>
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="Foreground" Value="#FF0078D4"/>
+                                            <Setter Property="TextDecorations" Value="Underline"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </TextBlock.Style>
+                            <Run Text="配置文件："/><Run Text="{Binding GitConfigPath, Mode=OneWay}"/>
+                        </TextBlock>
+
+                        <ListBox ItemsSource="{Binding Profiles}"
+                                 SelectedItem="{Binding SelectedProfile}"
+                                 BorderThickness="1"
+                                 BorderBrush="#FFCCCCCC"
+                                 Background="White">
+                            <!-- 当前生效的档案用背景色高亮标识，不再显示文字标记 -->
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="BorderThickness" Value="3,0,0,0"/>
+                                    <Setter Property="BorderBrush" Value="Transparent"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                            <Setter Property="Background" Value="#FFE3F5E4"/>
+                                            <Setter Property="BorderBrush" Value="#FF107C10"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <StackPanel Margin="8,6">
+                                        <!-- 第一行已是 user.name，不再重复显示第二行 -->
+                                        <TextBlock Text="{Binding UserName}" FontWeight="SemiBold" FontSize="14"/>
+                                        <TextBlock Text="{Binding Email}" Foreground="#FF888888" FontSize="11" Margin="0,2,0,0"/>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+                    </DockPanel>
+
+                    <!-- 右侧详情与操作 -->
+                    <Border Grid.Column="1" Background="White" BorderBrush="#FFCCCCCC" BorderThickness="1" CornerRadius="4" Padding="16">
+                        <ScrollViewer VerticalScrollBarVisibility="Auto">
+                            <StackPanel>
+                                <DockPanel Margin="0,0,0,12">
+                                    <!-- DockPanel 中先声明的靠最外侧，因此「打开配置路径」在最右，「完整配置」在其左侧 -->
+                                    <Button DockPanel.Dock="Right" Content="打开配置路径"
+                                            Command="{Binding OpenGitConfigLocationCommand}"
+                                            Style="{StaticResource SecondaryButton}"
+                                            Margin="12,0,0,0"
+                                            ToolTip="在资源管理器中打开 .gitconfig 所在目录并选中该文件"/>
+                                    <Button DockPanel.Dock="Right" Content="完整配置"
+                                            Click="OpenConfigWindow_Click"
+                                            Margin="12,0,0,0"
+                                            ToolTip="在新窗口中浏览与编辑全局 git config 项"/>
+                                    <TextBlock Text="当前全局配置" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+                                </DockPanel>
+                                <!-- 键值列表由视图模型提供，增减配置项只改一处 -->
+                                <ItemsControl ItemsSource="{Binding CurrentConfigRows}" Margin="0,0,0,16">
+                                    <ItemsControl.ItemTemplate>
+                                        <DataTemplate>
+                                            <Grid Margin="0,0,0,6">
+                                                <Grid.ColumnDefinitions>
+                                                    <ColumnDefinition Width="130"/>
+                                                    <ColumnDefinition Width="*"/>
+                                                </Grid.ColumnDefinitions>
+                                                <TextBlock Grid.Column="0" Text="{Binding Label}" VerticalAlignment="Top"
+                                                           Foreground="#FF555555" TextWrapping="Wrap"/>
+                                                <TextBlock Grid.Column="1" Text="{Binding Value}"
+                                                           FontWeight="SemiBold" TextWrapping="Wrap"
+                                                           FontFamily="Consolas"/>
+                                            </Grid>
+                                        </DataTemplate>
+                                    </ItemsControl.ItemTemplate>
+                                </ItemsControl>
+
+                                <Separator Margin="0,8"/>
+                                <TextBlock Text="选中档案操作" FontSize="16" FontWeight="Bold" Margin="0,12,0,8"/>
+                                <StackPanel Orientation="Horizontal">
+                                    <Button Content="应用此档案" Command="{Binding ApplyProfileCommand}" Style="{StaticResource SuccessButton}"/>
+                                    <Button Content="编辑" Command="{Binding EditProfileCommand}">
+                                        <!-- 选中档案时显示为主题蓝，未选中时置灰 -->
+                                        <Button.Style>
+                                            <Style TargetType="Button" BasedOn="{StaticResource SecondaryButton}">
+                                                <Setter Property="Background" Value="#FF0078D4"/>
+                                                <Style.Triggers>
+                                                    <DataTrigger Binding="{Binding SelectedProfile}" Value="{x:Null}">
+                                                        <Setter Property="Background" Value="#FF6B6B6B"/>
+                                                    </DataTrigger>
+                                                </Style.Triggers>
+                                            </Style>
+                                        </Button.Style>
+                                    </Button>
+                                    <Button Content="删除" Command="{Binding DeleteProfileCommand}" Style="{StaticResource DangerButton}"/>
+                                </StackPanel>
+
+                                <TextBlock Text="说明：点击「应用此档案」会将选中档案的 user.name / user.email / 签名配置写入全局 .gitconfig。"
+                                           TextWrapping="Wrap" Foreground="#FF666666" Margin="0,16,0,0" FontSize="12"/>
+                            </StackPanel>
+                        </ScrollViewer>
+                    </Border>
+                </Grid>
+            </TabItem>
+
+            <!-- ========== 标签页2：GitHub CLI ========== -->
+            <TabItem Header="GitHub CLI">
+                <Grid Margin="8">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="Auto"/>
+                        <RowDefinition Height="*"/>
+                    </Grid.RowDefinitions>
+
+                    <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
+                        <Button Content="刷新账号状态" Command="{Binding RefreshGithubCommand}" Style="{StaticResource SecondaryButton}"/>
+                        <Button Content="登录新账号" Command="{Binding LoginGithubCommand}" Style="{StaticResource SuccessButton}"
+                                ToolTip="执行 gh auth login（浏览器授权），登录后账号会出现在左侧列表"/>
+                        <Button Content="切换选中" Command="{Binding SwitchGithubAccountCommand}" Style="{StaticResource SuccessButton}"
+                                ToolTip="也可以直接点列表里每一行的「切换」按钮"/>
+                        <Button Content="退出选中" Command="{Binding LogoutGithubAccountCommand}" Style="{StaticResource DangerButton}"
+                                ToolTip="执行 gh auth logout，仅删除本地凭据"/>
+                    </StackPanel>
+
+                    <Grid Grid.Row="1">
+                        <Grid.ColumnDefinitions>
+                            <ColumnDefinition Width="340"/>
+                            <ColumnDefinition Width="*"/>
+                        </Grid.ColumnDefinitions>
+
+                        <ListBox Grid.Column="0" ItemsSource="{Binding GithubAccounts}"
+                                 SelectedItem="{Binding SelectedGithubAccount}"
+                                 BorderBrush="#FFCCCCCC" Background="White" Margin="0,0,12,0">
+                            <!-- 当前生效账号用绿色高亮，与「GitConfig」页风格一致 -->
+                            <ListBox.ItemContainerStyle>
+                                <Style TargetType="ListBoxItem">
+                                    <Setter Property="HorizontalContentAlignment" Value="Stretch"/>
+                                    <Setter Property="Padding" Value="0"/>
+                                    <Setter Property="BorderThickness" Value="3,0,0,0"/>
+                                    <Setter Property="BorderBrush" Value="Transparent"/>
+                                    <Style.Triggers>
+                                        <DataTrigger Binding="{Binding IsActive}" Value="True">
+                                            <Setter Property="Background" Value="#FFE3F5E4"/>
+                                            <Setter Property="BorderBrush" Value="#FF107C10"/>
+                                        </DataTrigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </ListBox.ItemContainerStyle>
+                            <ListBox.ItemTemplate>
+                                <DataTemplate>
+                                    <Grid Margin="8,6">
+                                        <Grid.ColumnDefinitions>
+                                            <ColumnDefinition Width="*"/>
+                                            <ColumnDefinition Width="Auto"/>
+                                        </Grid.ColumnDefinitions>
+                                        <StackPanel Grid.Column="0" VerticalAlignment="Center">
+                                            <TextBlock Text="{Binding Username}" FontWeight="SemiBold" FontSize="14"/>
+                                            <TextBlock Text="{Binding Host}" Foreground="#FF888888" FontSize="11"/>
+                                            <TextBlock Text="{Binding Protocol}" Foreground="#FF666666" FontSize="11"/>
+                                        </StackPanel>
+                                        <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
+                                            <!-- 生效账号不显示「切换」，改显示状态标记 -->
+                                            <Button Content="切换" Style="{StaticResource SuccessButton}"
+                                                    Margin="6,0,0,0" MinWidth="56"
+                                                    Command="{Binding DataContext.SwitchAccountCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                    CommandParameter="{Binding}"
+                                                    Visibility="{Binding IsNotActive, Converter={StaticResource BoolToVis}}"
+                                                    ToolTip="立即把 gh 切换到该账号"/>
+                                            <TextBlock Text="✓ 使用中" VerticalAlignment="Center" Margin="6,0,0,0"
+                                                       Foreground="#FF107C10" FontWeight="SemiBold" FontSize="12"
+                                                       Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}}"/>
+                                            <Button Content="退出" Style="{StaticResource DangerButton}"
+                                                    Margin="6,0,0,0" MinWidth="56"
+                                                    Command="{Binding DataContext.LogoutGithubAccountCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
+                                                    CommandParameter="{Binding}"
+                                                    ToolTip="退出登录该账号（会先二次确认）"/>
+                                        </StackPanel>
+                                    </Grid>
+                                </DataTemplate>
+                            </ListBox.ItemTemplate>
+                        </ListBox>
+
+                        <Border Grid.Column="1" Background="White" BorderBrush="#FFCCCCCC" BorderThickness="1" CornerRadius="4" Padding="12">
+                            <DockPanel>
+                                <!-- 设备码授权面板：开始登录即显示，便于随时手动打开授权页 -->
+                                <Border DockPanel.Dock="Top" Background="#FFFFF4CE" BorderBrush="#FFE8B93B"
+                                        BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,0,10"
+                                        Visibility="{Binding IsDeviceAuthVisible, Converter={StaticResource BoolToVis}}">
+                                    <StackPanel>
+                                        <TextBlock FontWeight="Bold" Text="GitHub 设备授权" Margin="0,0,0,6"/>
+                                        <StackPanel Orientation="Horizontal">
+                                            <TextBlock Text="设备码：" VerticalAlignment="Center"/>
+                                            <TextBox Text="{Binding DeviceCodeText, Mode=OneWay}" IsReadOnly="True"
+                                                     FontFamily="Consolas" FontSize="16" FontWeight="Bold"
+                                                     Width="130" Background="White" BorderBrush="#FFBFA32E"/>
+                                            <Button Content="复制设备码" Command="{Binding CopyDeviceCodeCommand}"
+                                                    Style="{StaticResource SecondaryButton}" Margin="8,0,0,0"/>
+                                            <Button Content="打开授权页面" Command="{Binding OpenGithubDevicePageCommand}"
+                                                    Style="{StaticResource SuccessButton}" Margin="4,0,0,0"/>
+                                            <Button Content="取消登录" Command="{Binding CancelLoginCommand}"
+                                                    Style="{StaticResource DangerButton}" Margin="4,0,0,0"
+                                                    ToolTip="终止本次登录等待（浏览器里的授权动作不会自动撤销）"/>
+                                        </StackPanel>
+                                        <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#FF7A5C00" Margin="0,8,0,0"
+                                                   Text="把设备码粘贴到 GitHub 授权页面并确认，完成后账号列表会自动刷新。设备码同时已复制到剪贴板，可直接 Ctrl+V 粘贴。"/>
+                                    </StackPanel>
+                                </Border>
+
+                                <!-- 命令记录：只读但可选中复制；颜色由代码后台按类型着色 -->
+                                <RichTextBox x:Name="LogBox" IsReadOnly="True" IsDocumentEnabled="True"
+                                             Background="#FF1E1E1E" Foreground="#FFE8E8E8"
+                                             BorderThickness="0" Padding="8,6"
+                                             FontFamily="Consolas" FontSize="12"
+                                             VerticalScrollBarVisibility="Auto"
+                                             HorizontalScrollBarVisibility="Disabled">
+                                    <FlowDocument x:Name="LogDocument"/>
+                                </RichTextBox>
+                            </DockPanel>
+                        </Border>
+                    </Grid>
+                </Grid>
+            </TabItem>
+
+            <!-- ========== 标签页3：签名配置 ========== -->
+            <TabItem Header="签名配置">
+                <TextBlock Text="待开发" FontSize="20" FontWeight="Bold" Foreground="#FF888888"
+                           HorizontalAlignment="Center" VerticalAlignment="Center"/>
+            </TabItem>
+
+            <!-- ========== 标签页：关于 ========== -->
+            <TabItem Header="关于">
+                <StackPanel Margin="24">
+                    <TextBlock Text="GitConfigTool" FontSize="24" FontWeight="Bold"/>
+                    <TextBlock Text="版本 1.0.0" Margin="0,4,0,16" Foreground="#FF666666"/>
+                    <TextBlock>
+                        <Run Text="项目地址：" Foreground="#FF444444"/>
+                        <Hyperlink Click="OpenProjectUrl_Click"
+                                   Foreground="#FF0078D4" TextDecorations="None"
+                                   ToolTip="https://github.com/NeetheCheeBao/GitConfigTool">
+                            <Run Text="https://github.com/NeetheCheeBao/GitConfigTool"/>
+                            <Hyperlink.Style>
+                                <Style TargetType="Hyperlink">
+                                    <Style.Triggers>
+                                        <Trigger Property="IsMouseOver" Value="True">
+                                            <Setter Property="TextDecorations" Value="Underline"/>
+                                        </Trigger>
+                                    </Style.Triggers>
+                                </Style>
+                            </Hyperlink.Style>
+                        </Hyperlink>
+                    </TextBlock>
+                </StackPanel>
+            </TabItem>
+        </TabControl>
+
+        <!-- 底部状态栏 -->
+        <Border Grid.Row="2" Background="#FF2D2D30" Padding="12,6">
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="Auto"/>
+                    <ColumnDefinition Width="Auto"/>
+                </Grid.ColumnDefinitions>
+                <TextBlock Text="{Binding StatusMessage}" Foreground="#FFCCCCCC" VerticalAlignment="Center"/>
+                <!-- 鼠标悬停显示探测到的真实路径，便于确认用的是哪个 git / gh -->
+                <TextBlock Grid.Column="1" Foreground="#FF888888" VerticalAlignment="Center" Margin="0,0,16,0"
+                           ToolTip="{Binding GitPath, Mode=OneWay}">
+                    <Run Text="Git: "/><Run Text="{Binding GitVersion, Mode=OneWay}"/>
+                </TextBlock>
+                <TextBlock Grid.Column="2" Foreground="#FF888888" VerticalAlignment="Center"
+                           ToolTip="{Binding GhPath, Mode=OneWay}">
+                    <Run Text="gh: "/><Run Text="{Binding GhVersion, Mode=OneWay}"/>
+                </TextBlock>
+            </Grid>
+        </Border>
+
+        <!-- 忙碌遮罩 -->
+        <Border Grid.RowSpan="3" Background="#80000000" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
+            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
+                <TextBlock Text="处理中..." FontSize="18" Foreground="White" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+    </Grid>
+</Window>

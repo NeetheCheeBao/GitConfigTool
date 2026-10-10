@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>WinExe</OutputType>
+    <TargetFramework>net48</TargetFramework>
+    <UseWPF>true</UseWPF>
+    <LangVersion>latest</LangVersion>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <AssemblyName>GitConfigTool</AssemblyName>
+    <RootNamespace>GitConfigTool</RootNamespace>
+    <Version>1.0.0</Version>
+    <Company>NeetheCheeBao</Company>
+    <Authors>NeetheCheeBao</Authors>
+    <Product>GitConfigTool</Product>
+    <Description>Windows Git config manager</Description>
+    <ApplicationIcon>assets\icon.ico</ApplicationIcon>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <DebugType>none</DebugType>
+    <DebugSymbols>false</DebugSymbols>
+    <!-- 不生成 GitConfigTool.exe.config，保持单一 exe 产物（程序集头已声明 v4.0.30319 与 net48，运行时无需该文件） -->
+    <GenerateSupportedRuntime>false</GenerateSupportedRuntime>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Resource Include="assets\icon.ico" />
+  </ItemGroup>
+
+</Project>
