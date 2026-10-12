@@ -1,0 +1,53 @@
+<Window x:Class="GitConfigTool.Views.SshWhitelistWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="白名单内容"
+        Height="420" Width="1000"
+        MinHeight="300" MinWidth="700"
+        WindowStartupLocation="CenterOwner"
+        Background="#FFF5F5F5">
+    <Grid Margin="16">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <TextBlock Grid.Row="0" x:Name="TitleText" Text="白名单内容" FontSize="16" FontWeight="Bold"
+                   Margin="0,0,0,12"/>
+
+        <DockPanel Grid.Row="1">
+            <TextBlock DockPanel.Dock="Top" Text="每行一条：标识 算法 公钥"
+                       FontWeight="SemiBold" Margin="0,0,0,4"/>
+            <TextBlock DockPanel.Dock="Top" Style="{StaticResource PathLink}"
+                       Text="{Binding PathDisplay, Mode=OneWay}"
+                       Tag="{Binding Path}"
+                       MouseLeftButtonUp="Path_Click" MouseRightButtonUp="Path_RightClick">
+                <TextBlock.ToolTip>
+                    <TextBlock>
+                        <Run Text="{Binding Path, Mode=OneWay}"/><LineBreak/>
+                        <Run Text="左键定位到文件，右键复制路径" Foreground="#FF888888"/>
+                    </TextBlock>
+                </TextBlock.ToolTip>
+            </TextBlock>
+            <Border Background="White" BorderBrush="#FFCCCCCC" BorderThickness="1" CornerRadius="4">
+                <TextBox x:Name="ContentBox"
+                         Text="{Binding Text, UpdateSourceTrigger=PropertyChanged}"
+                         AcceptsReturn="True" AcceptsTab="True"
+                         FontFamily="Consolas" FontSize="12"
+                         TextWrapping="Wrap"
+                         VerticalContentAlignment="Top"
+                         VerticalScrollBarVisibility="Auto"
+                         HorizontalScrollBarVisibility="Disabled"
+                         BorderThickness="0"/>
+            </Border>
+        </DockPanel>
+
+        <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
+            <Button x:Name="CancelButton" Content="取消" Width="80" Click="Cancel_Click"
+                    Style="{StaticResource SecondaryButton}"/>
+            <Button x:Name="SaveButton" Content="校验并保存" Width="110" Click="Save_Click"
+                    Style="{StaticResource SuccessButton}"/>
+        </StackPanel>
+    </Grid>
+</Window>

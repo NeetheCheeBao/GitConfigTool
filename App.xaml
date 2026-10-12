@@ -1,32 +1,60 @@
 <Application x:Class="GitConfigTool.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:helpers="clr-namespace:GitConfigTool.Helpers"
              StartupUri="views/MainWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
-            <!-- 通用样式 -->
+            <!-- 按钮：浅灰底 + 细边框 + 深色字，扁平紧凑 -->
             <Style TargetType="Button">
-                <Setter Property="Padding" Value="12,6"/>
+                <Setter Property="Padding" Value="12,4"/>
                 <Setter Property="Margin" Value="4"/>
                 <Setter Property="Cursor" Value="Hand"/>
-                <Setter Property="Background" Value="#FF0078D4"/>
-                <Setter Property="Foreground" Value="White"/>
-                <Setter Property="BorderThickness" Value="0"/>
+                <Setter Property="Background" Value="#FFF0F0F0"/>
+                <Setter Property="Foreground" Value="#FF1A1A1A"/>
+                <Setter Property="BorderBrush" Value="#FFADADAD"/>
+                <Setter Property="BorderThickness" Value="1"/>
+                <Setter Property="SnapsToDevicePixels" Value="True"/>
+                <!-- 默认（主操作）悬停为淡蓝底 + 同色系更饱和的蓝边框，其余用途由各自的命名样式覆盖 -->
+                <Setter Property="helpers:ButtonHover.HoverBackground" Value="#FFE5F1FB"/>
+                <Setter Property="helpers:ButtonHover.HoverBorder" Value="#FF6FA8DC"/>
+                <Setter Property="helpers:ButtonHover.PressedBackground" Value="#FFCCE4F7"/>
+                <Setter Property="helpers:ButtonHover.PressedBorder" Value="#FF4A86C8"/>
                 <Setter Property="Template">
                     <Setter.Value>
                         <ControlTemplate TargetType="Button">
                             <Border x:Name="border"
                                     Background="{TemplateBinding Background}"
-                                    CornerRadius="4"
-                                    Padding="{TemplateBinding Padding}">
-                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                                    BorderBrush="{TemplateBinding BorderBrush}"
+                                    BorderThickness="{TemplateBinding BorderThickness}"
+                                    CornerRadius="3"
+                                    SnapsToDevicePixels="True">
+                                <ContentPresenter HorizontalAlignment="Center" VerticalAlignment="Center"
+                                                  Margin="{TemplateBinding Padding}"
+                                                  RecognizesAccessKey="False"/>
                             </Border>
                             <ControlTemplate.Triggers>
+                                <!-- 悬停/按下的底色与边框色来自 ButtonHover 附加属性，各按钮可按用途给不同色 -->
                                 <Trigger Property="IsMouseOver" Value="True">
-                                    <Setter TargetName="border" Property="Background" Value="#FF106EBE"/>
+                                    <Setter TargetName="border" Property="Background"
+                                            Value="{Binding Path=(helpers:ButtonHover.HoverBackground),
+                                                            RelativeSource={RelativeSource TemplatedParent}}"/>
+                                    <Setter TargetName="border" Property="BorderBrush"
+                                            Value="{Binding Path=(helpers:ButtonHover.HoverBorder),
+                                                            RelativeSource={RelativeSource TemplatedParent}}"/>
+                                </Trigger>
+                                <Trigger Property="IsPressed" Value="True">
+                                    <Setter TargetName="border" Property="Background"
+                                            Value="{Binding Path=(helpers:ButtonHover.PressedBackground),
+                                                            RelativeSource={RelativeSource TemplatedParent}}"/>
+                                    <Setter TargetName="border" Property="BorderBrush"
+                                            Value="{Binding Path=(helpers:ButtonHover.PressedBorder),
+                                                            RelativeSource={RelativeSource TemplatedParent}}"/>
                                 </Trigger>
                                 <Trigger Property="IsEnabled" Value="False">
-                                    <Setter TargetName="border" Property="Background" Value="#FFAAAAAA"/>
+                                    <Setter TargetName="border" Property="Background" Value="#FFF7F7F7"/>
+                                    <Setter TargetName="border" Property="BorderBrush" Value="#FFDCDCDC"/>
+                                    <Setter Property="Foreground" Value="#FFAAAAAA"/>
                                 </Trigger>
                             </ControlTemplate.Triggers>
                         </ControlTemplate>
@@ -34,7 +62,16 @@
                 </Setter>
             </Style>
 
+            <!-- 通用布尔转可见性，各窗口共用 -->
+            <BooleanToVisibilityConverter x:Key="BoolToVis"/>
+
             <Style TargetType="TextBox">
+                <Setter Property="Padding" Value="6,4"/>
+                <Setter Property="Margin" Value="2"/>
+                <Setter Property="VerticalContentAlignment" Value="Center"/>
+            </Style>
+
+            <Style TargetType="PasswordBox">
                 <Setter Property="Padding" Value="6,4"/>
                 <Setter Property="Margin" Value="2"/>
                 <Setter Property="VerticalContentAlignment" Value="Center"/>
@@ -45,16 +82,40 @@
                 <Setter Property="Margin" Value="2"/>
             </Style>
 
-            <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                <Setter Property="Background" Value="#FF6B6B6B"/>
-            </Style>
+            <!-- 按钮按用途分四种悬停淡色：主操作淡蓝、次要淡灰、危险淡红、确认淡绿 -->
 
+            <!-- 次要操作：与默认按钮一致，同样淡蓝高亮；保留样式名作为语义标记 -->
+            <Style x:Key="SecondaryButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}"/>
+
+            <!-- 危险操作：淡红 -->
             <Style x:Key="DangerButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                <Setter Property="Background" Value="#FFD13438"/>
+                <Setter Property="helpers:ButtonHover.HoverBackground" Value="#FFFBEAEA"/>
+                <Setter Property="helpers:ButtonHover.HoverBorder" Value="#FFDE9A9A"/>
+                <Setter Property="helpers:ButtonHover.PressedBackground" Value="#FFF6D9D9"/>
+                <Setter Property="helpers:ButtonHover.PressedBorder" Value="#FFC97B7B"/>
             </Style>
 
+            <!-- 确认/保存：淡绿 -->
             <Style x:Key="SuccessButton" TargetType="Button" BasedOn="{StaticResource {x:Type Button}}">
-                <Setter Property="Background" Value="#FF107C10"/>
+                <Setter Property="helpers:ButtonHover.HoverBackground" Value="#FFEAF6EA"/>
+                <Setter Property="helpers:ButtonHover.HoverBorder" Value="#FF9CC79C"/>
+                <Setter Property="helpers:ButtonHover.PressedBackground" Value="#FFD8EDD8"/>
+                <Setter Property="helpers:ButtonHover.PressedBorder" Value="#FF7BAF7B"/>
+            </Style>
+
+            <!-- 可交互的文件路径：左键定位、右键复制 -->
+            <Style x:Key="PathLink" TargetType="TextBlock">
+                <Setter Property="FontSize" Value="11"/>
+                <Setter Property="Foreground" Value="#FF888888"/>
+                <Setter Property="TextTrimming" Value="CharacterEllipsis"/>
+                <Setter Property="Margin" Value="0,0,0,6"/>
+                <Setter Property="Cursor" Value="Hand"/>
+                <Style.Triggers>
+                    <Trigger Property="IsMouseOver" Value="True">
+                        <Setter Property="Foreground" Value="#FF0078D4"/>
+                        <Setter Property="TextDecorations" Value="Underline"/>
+                    </Trigger>
+                </Style.Triggers>
             </Style>
         </ResourceDictionary>
     </Application.Resources>

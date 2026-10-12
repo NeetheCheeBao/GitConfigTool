@@ -1,3 +1,4 @@
+using System;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
@@ -34,6 +35,10 @@ namespace GitConfigTool.Views
         public MainWindow()
         {
             InitializeComponent();
+
+            // 标题栏版本号
+            Title = Helpers.AppInfo.Title;
+
             _vm = new MainViewModel();
             DataContext = _vm;
 
@@ -51,6 +56,32 @@ namespace GitConfigTool.Views
                 }
             };
 
+            _vm.RequestCreateSshKey += (s, e) =>
+            {
+                var dlg = new SshKeyCreateWindow(_vm.KeyRequest)
+                {
+                    Owner = this
+                };
+                if (dlg.ShowDialog() == true)
+                {
+                    _vm.KeyRequest = dlg.Request;
+                    if (_vm.CreateSshKeyCommand.CanExecute(null))
+                        _vm.CreateSshKeyCommand.Execute(null);
+                }
+            };
+
+            _vm.RequestOpenSshEntry += OpenSshEntry;
+
+            _vm.RequestReconcileWhitelist += result =>
+            {
+                var dlg = new WhitelistReconcileWindow(result) { Owner = this };
+                if (dlg.ShowDialog() == true)
+                    _vm.ApplyWhitelistChanges(dlg.Result.Items);
+            };
+
+            // 目录监听要在窗口关闭时释放
+            Closed += (s, e) => _vm.Dispose();
+
             Loaded += async (s, e) => await _vm.InitializeAsync();
 
             // RichTextBox 不是依赖属性绑定目标，因此监听视图模型通知来重建内容
@@ -63,21 +94,11 @@ namespace GitConfigTool.Views
         }
 
         /// <summary>
-        /// 打开「完整配置」窗口（模态：打开期间主窗口锁定，禁止操作）
-        /// </summary>
-        private void OpenConfigWindow_Click(object sender, RoutedEventArgs e)
-        {
-            // 模态显示，阻塞到窗口关闭为止；因此不会再出现重复打开
-            var dlg = new ConfigWindow(_vm) { Owner = this };
-            dlg.ShowDialog();
-        }
-
-        /// <summary>
         /// 点击项目地址：用默认浏览器打开仓库页面
         /// </summary>
-        private void OpenProjectUrl_Click(object sender, RoutedEventArgs e)
+        /// <summary>在默认浏览器中打开链接</summary>
+        private static void OpenUrl(string url)
         {
-            const string url = "https://github.com/NeetheCheeBao/GitConfigTool";
             try
             {
                 System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
@@ -86,25 +107,89 @@ namespace GitConfigTool.Views
                     UseShellExecute = true
                 });
             }
-            catch (System.Exception ex)
+            catch (Exception ex)
             {
                 MessageBox.Show("无法打开链接：" + ex.Message + "\n\n" + url,
                     "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
+        private void OpenProjectUrl_Click(object sender, RoutedEventArgs e) =>
+            OpenUrl("https://github.com/NeetheCheeBao/GitConfigTool");
+
+        private void OpenCreatorUrl_Click(object sender, RoutedEventArgs e) =>
+            OpenUrl("https://github.com/NeetheCheeBao");
+
+        private void CheckUpdate_Click(object sender, RoutedEventArgs e) =>
+            OpenUrl("https://github.com/NeetheCheeBao/GitConfigTool/releases");
+
         /// <summary>
-        /// 点击配置文件路径：在资源管理器中打开档案数据所在目录
+        /// 刷新按钮的视觉反馈：让列表快速淡出再淡回，闪一下表示确实刷新了
         /// </summary>
-        private void OpenProfilesFolder_Click(object sender, System.Windows.Input.MouseButtonEventArgs e)
+        private void FlashSshList_Click(object sender, RoutedEventArgs e)
         {
-            _vm.OpenProfilesJsonFolderCommand.Execute(null);
+            var animation = new System.Windows.Media.Animation.DoubleAnimation
+            {
+                From = 1.0,
+                To = 0.2,
+                Duration = TimeSpan.FromMilliseconds(90),
+                AutoReverse = true,
+                EasingFunction = new System.Windows.Media.Animation.QuadraticEase
+                {
+                    EasingMode = System.Windows.Media.Animation.EasingMode.EaseOut
+                }
+            };
+
+            SshEntryList.BeginAnimation(OpacityProperty, animation);
         }
 
         /// <summary>
-        /// 重建命令记录的彩色内容并滚动到最新一行。
-        /// 用 RichTextBox 而不是 ItemsControl，是为了让文本可以被选中复制。
-        /// 行前缀「执行:」不再单独显示，整行按类型着色。
+        /// 行内「预览」「编辑」按钮：密钥开密钥窗口，白名单开白名单窗口
+        /// </summary>
+        private void OpenSshEntry(Models.SshListEntry entry, bool readOnly)
+        {
+            if (entry.IsWhitelist) OpenWhitelistWindow(entry, readOnly);
+            else OpenKeyWindow(entry, readOnly);
+        }
+
+        private void OpenKeyWindow(Models.SshListEntry entry, bool readOnly)
+        {
+            var content = _vm.LoadKeyPairContent(entry);
+            if (content == null)
+            {
+                MessageBox.Show("无法读取密钥「" + entry.Name + "」的文件内容。",
+                    "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var dlg = new SshKeyViewWindow(content, readOnly) { Owner = this };
+
+            // 必须先无条件显示对话框；只读模式下只是不保存而已
+            var result = dlg.ShowDialog();
+            if (!readOnly && result == true)
+                _vm.SaveKeyPairContent(dlg.KeyPair);
+        }
+
+        private void OpenWhitelistWindow(Models.SshListEntry entry, bool readOnly)
+        {
+            var content = _vm.LoadWhitelistContent();
+            if (content == null)
+            {
+                MessageBox.Show("无法读取「" + entry.Name + "」的文件内容。",
+                    "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                return;
+            }
+
+            var dlg = new SshWhitelistWindow(content, readOnly) { Owner = this };
+
+            // 必须先无条件显示对话框；只读模式下只是不保存而已
+            var result = dlg.ShowDialog();
+            if (!readOnly && result == true)
+                _vm.SaveWhitelistContent(dlg.Whitelist);
+        }
+
+        /// <summary>
+        /// 重建命令记录的彩色内容并滚动到最新一行，整行按类型着色
         /// </summary>
         private void RenderLog()
         {

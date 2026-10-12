@@ -1,0 +1,70 @@
+<Window x:Class="GitConfigTool.Views.SshKeyCreateWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="创建密钥对"
+        Height="450" Width="480"
+        WindowStartupLocation="CenterOwner"
+        ResizeMode="NoResize"
+        Background="#FFF5F5F5">
+    <Grid Margin="20">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel>
+            <TextBlock Text="密钥名（对应 .ssh 下的文件名）" Margin="0,0,0,4"/>
+            <TextBox Text="{Binding KeyName, UpdateSourceTrigger=PropertyChanged}"/>
+            <TextBlock FontSize="11" Foreground="#FF888888" Margin="2,3,0,0"
+                       TextTrimming="CharacterEllipsis">
+                <Run Text="将写入：%USERPROFILE%\.ssh\"/><Run Text="{Binding KeyName, Mode=OneWay}"/>
+            </TextBlock>
+
+            <TextBlock Text="算法" Margin="0,12,0,4"/>
+            <ComboBox SelectedValue="{Binding KeyType, UpdateSourceTrigger=PropertyChanged}"
+                      SelectedValuePath="Tag">
+                <ComboBoxItem Tag="ed25519">ED25519（推荐）</ComboBoxItem>
+                <ComboBoxItem Tag="rsa">RSA 4096</ComboBoxItem>
+                <ComboBoxItem Tag="ecdsa">ECDSA（nistp521）</ComboBoxItem>
+            </ComboBox>
+
+            <TextBlock Text="标识（推荐填写提交者邮箱）" Margin="0,12,0,4"/>
+            <TextBox Text="{Binding Comment, UpdateSourceTrigger=PropertyChanged}"
+                     ToolTip="会原样写入 .pub 公钥文件（作为注释），并作为白名单里的标识。公钥一旦上传或分享，这部分内容也会一并公开"/>
+
+            <TextBlock Text="设定私钥密码" Margin="0,12,0,4" Foreground="#FFAAAAAA"/>
+            <PasswordBox x:Name="PassphraseBox" IsEnabled="False"
+                         Background="#FFEDEDED" BorderBrush="#FFD9D9D9"
+                         PasswordChanged="Passphrase_Changed"
+                         ToolTipService.ShowOnDisabled="True"
+                         ToolTip="不支持该功能"/>
+
+            <!-- 用 TextBlock 承载内容：CheckBox 直接吃字符串时会把 _ 当成访问键，
+                 "allowed_signers" 里的下划线会被吃掉并给 s 加下划线 -->
+            <CheckBox Margin="0,16,0,0"
+                      IsChecked="{Binding AddToAllowedSigners}"
+                      ToolTip="白名单每行是「标识 算法 公钥」，这里用「标识」框的内容作为标识">
+                <TextBlock Text="自动将公钥加入白名单（allowed_signers）"/>
+            </CheckBox>
+
+            <TextBlock Text="加入白名单需要先填写标识" FontSize="11" Foreground="#FFA32D2D"
+                       Margin="2,3,0,0">
+                <TextBlock.Style>
+                    <Style TargetType="TextBlock">
+                        <Setter Property="Visibility" Value="Collapsed"/>
+                        <Style.Triggers>
+                            <DataTrigger Binding="{Binding CanAddToAllowedSigners}" Value="False">
+                                <Setter Property="Visibility" Value="Visible"/>
+                            </DataTrigger>
+                        </Style.Triggers>
+                    </Style>
+                </TextBlock.Style>
+            </TextBlock>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,16,0,0">
+            <Button Content="取消" Width="80" Click="Cancel_Click" Style="{StaticResource SecondaryButton}"/>
+            <Button Content="创建" Width="80" Click="Create_Click" Style="{StaticResource SuccessButton}"/>
+        </StackPanel>
+    </Grid>
+</Window>

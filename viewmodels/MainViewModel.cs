@@ -17,11 +17,18 @@ namespace GitConfigTool.ViewModels
     /// <summary>
     /// 主窗口视图模型
     /// </summary>
-    public class MainViewModel : INotifyPropertyChanged
+    public class MainViewModel : INotifyPropertyChanged, IDisposable
     {
         private readonly GitService _gitService = new GitService();
         private readonly GithubCliService _ghService = new GithubCliService();
         private readonly ProfileStorageService _storage = new ProfileStorageService();
+        private readonly SshService _sshService = new SshService();
+
+        // 目录监听：检测外部改动后自动刷新
+        private FolderWatcher _profilesWatcher;
+        private FolderWatcher _gitConfigWatcher;
+        private FolderWatcher _sshWatcher;
+        private bool _autoRefreshing;
 
 
         private string _statusMessage = "就绪";
@@ -49,6 +56,7 @@ namespace GitConfigTool.ViewModels
         private GitProfile _selectedProfile;
         private GithubAccount _selectedGithubAccount;
         private GitConfigItem _selectedConfigItem;
+        private SshListEntry _selectedSshEntry;
         private int _selectedTabIndex;
 
         public ObservableCollection<GitProfile> Profiles { get; } = new ObservableCollection<GitProfile>();
@@ -58,7 +66,99 @@ namespace GitConfigTool.ViewModels
         /// <summary>「当前全局配置」展示的键值行</summary>
         public ObservableCollection<ConfigDisplayRow> CurrentConfigRows { get; } = new ObservableCollection<ConfigDisplayRow>();
 
+        /// <summary>SSH 目录条目列表（签名白名单置顶）</summary>
+        public ObservableCollection<SshListEntry> SshEntries { get; } = new ObservableCollection<SshListEntry>();
+
+        /// <summary>当前选中的 SSH 条目</summary>
+        public SshListEntry SelectedSshEntry
+        {
+            get => _selectedSshEntry;
+            set { _selectedSshEntry = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>创建密钥对时的输入参数</summary>
+        public SshKeyRequest KeyRequest { get; set; } = new SshKeyRequest();
+
+        /// <summary>SSH 目录路径（界面显示用）</summary>
+        public string SshFolderPath => _sshService.SshFolderPath;
+
+        /// <summary>SSH 目录路径（界面显示，用 %USERPROFILE% 缩写）</summary>
+        public string SshFolderPathDisplay => Helpers.PathDisplay.Abbreviate(SshFolderPath);
+
+        /// <summary>是否一个密钥条目都没有（白名单及其占位条目不算，为空时界面显示提示文案）</summary>
+        public bool IsSshListEmpty => !SshEntries.Any(e => e.IsRealEntry && !e.IsWhitelist);
+
+        /// <summary>条目列表的状态说明：目录缺失 / 没有条目 / 共 N 项</summary>
+        public string SshStatusText
+        {
+            get
+            {
+                if (!_sshService.FolderExists) return "未找到 SSH 目录";
+                if (IsSshListEmpty) return "没有找到 SSH 密钥";
+                return $"共 {SshEntries.Count} 项";
+            }
+        }
+
         public GitProfile EditingProfile { get; set; } = new GitProfile();
+
+        /// <summary>应用名称</summary>
+        public string AppName => Helpers.AppInfo.Name;
+
+        /// <summary>「关于」页显示的版本文案</summary>
+        public string AppVersionText => Helpers.AppInfo.VersionText;
+
+        private string _environmentText = string.Empty;
+
+        /// <summary>
+        /// 「关于」页展示的本机环境信息。用纯文本承载，界面放进只读文本框，
+        /// 这样既能整段复制，也能用鼠标自由划选其中一部分。
+        /// </summary>
+        public string EnvironmentText
+        {
+            get => _environmentText;
+            set { _environmentText = value; OnPropertyChanged(); }
+        }
+
+        /// <summary>
+        /// 汇总本机环境信息，供「关于」页展示与一键复制
+        /// </summary>
+        private void LoadEnvironmentText()
+        {
+            var lines = new List<string>();
+            AddEnvironmentLine(lines, "应用", Helpers.AppInfo.Name + " " + Helpers.AppInfo.Version);
+            AddEnvironmentLine(lines, "Git", WithPath(GitVersion, GitPath));
+            AddEnvironmentLine(lines, "GitHub CLI", WithPath(GhVersion, GhPath));
+            AddEnvironmentLine(lines, "SSH 目录", SshFolderPathDisplay);
+            AddEnvironmentLine(lines, "配置文件", GitConfigPathDisplay);
+            AddEnvironmentLine(lines, "系统", Environment.OSVersion.VersionString + "　·　" +
+                System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription);
+
+            EnvironmentText = string.Join(Environment.NewLine, lines);
+        }
+
+        private static void AddEnvironmentLine(List<string> lines, string label, string value)
+        {
+            if (string.IsNullOrWhiteSpace(value)) return;
+            lines.Add(label + "：" + value.Trim());
+        }
+
+        /// <summary>把版本号与可执行文件位置拼成一行</summary>
+        private static string WithPath(string version, string path)
+        {
+            var v = (version ?? string.Empty).Trim();
+            var p = (path ?? string.Empty).Trim();
+            return p.Length == 0 ? v : v + "　·　" + p;
+        }
+
+        /// <summary>
+        /// 把本机环境信息整段复制到剪贴板，方便提 issue 时粘贴
+        /// </summary>
+        private void CopyEnvironmentInfo()
+        {
+            StatusMessage = ShellHelper.CopyToClipboard(EnvironmentText)
+                ? "本机信息已复制到剪贴板"
+                : "复制失败，剪贴板被占用";
+        }
 
         public string StatusMessage
         {
@@ -135,8 +235,11 @@ namespace GitConfigTool.ViewModels
         public string GitConfigPath
         {
             get => _gitConfigPath;
-            set { _gitConfigPath = value; OnPropertyChanged(); }
+            set { _gitConfigPath = value; OnPropertyChanged(); OnPropertyChanged(nameof(GitConfigPathDisplay)); }
         }
+
+        /// <summary>档案数据文件路径（界面显示，用 %APPDATA% 缩写）</summary>
+        public string GitConfigPathDisplay => Helpers.PathDisplay.Abbreviate(_gitConfigPath);
 
         public string GhAuthStatus
         {
@@ -168,7 +271,7 @@ namespace GitConfigTool.ViewModels
         }
 
         /// <summary>
-        /// 是否显示设备授权面板（开始登录即显示，便于用户随时手动打开授权页）
+        /// 是否显示设备授权面板
         /// </summary>
         public bool IsDeviceAuthVisible
         {
@@ -176,7 +279,7 @@ namespace GitConfigTool.ViewModels
             set { _isDeviceAuthVisible = value; OnPropertyChanged(); }
         }
 
-        /// <summary>设备码为空时给出占位提示，避免文本框看起来是空的</summary>
+        /// <summary>设备码为空时的占位提示</summary>
         public string DeviceCodeText => string.IsNullOrEmpty(_deviceCode) ? "获取中..." : _deviceCode;
 
         /// <summary>授权页面地址（为空时用兜底地址）</summary>
@@ -226,14 +329,27 @@ namespace GitConfigTool.ViewModels
         public ICommand SaveConfigItemCommand { get; }
         public ICommand DeleteConfigItemCommand { get; }
         public ICommand RefreshConfigListCommand { get; }
+        public ICommand RefreshSshCommand { get; }
+        public ICommand OpenSshFolderCommand { get; }
+        public ICommand CopyGitConfigPathCommand { get; }
+        public ICommand CopySshPathCommand { get; }
+        public ICommand AddSshKeyCommand { get; }
+        public ICommand CreateSshKeyCommand { get; }
+        public ICommand OpenSshEntryCommand { get; }
+        public ICommand PreviewSshEntryCommand { get; }
+        public ICommand DeleteSshEntryCommand { get; }
+        public ICommand ReconcileWhitelistCommand { get; }
+        public ICommand CreateWhitelistFileCommand { get; }
+        public ICommand CopyEnvironmentCommand { get; }
 
         public MainViewModel()
         {
             RefreshCommand = new AsyncRelayCommand(async _ => await RefreshAllAsync());
-            ApplyProfileCommand = new AsyncRelayCommand(async _ => await ApplySelectedProfileAsync(), _ => SelectedProfile != null);
+            // 档案操作命令以行内档案为参数，为空时回退到当前选中项
+            ApplyProfileCommand = new AsyncRelayCommand(async p => await ApplyProfileAsync(p as GitProfile), p => p is GitProfile);
             AddProfileCommand = new RelayCommand(_ => StartAddProfile());
-            EditProfileCommand = new RelayCommand(_ => StartEditProfile(), _ => SelectedProfile != null);
-            DeleteProfileCommand = new AsyncRelayCommand(async _ => await DeleteSelectedProfileAsync(), _ => SelectedProfile != null);
+            EditProfileCommand = new RelayCommand(p => StartEditProfile(p as GitProfile), p => p is GitProfile);
+            DeleteProfileCommand = new AsyncRelayCommand(async p => await DeleteProfileAsync(p as GitProfile), p => p is GitProfile);
             SaveEditingProfileCommand = new AsyncRelayCommand(async _ => await SaveEditingProfileAsync());
             CaptureCurrentAsProfileCommand = new AsyncRelayCommand(async _ => await CaptureCurrentAsProfileAsync());
             SwitchGithubAccountCommand = new AsyncRelayCommand(async _ => await SwitchGithubAccountAsync(null), _ => SelectedGithubAccount != null);
@@ -251,6 +367,22 @@ namespace GitConfigTool.ViewModels
             SaveConfigItemCommand = new AsyncRelayCommand(async _ => await SaveSelectedConfigItemAsync(), _ => SelectedConfigItem != null);
             DeleteConfigItemCommand = new AsyncRelayCommand(async _ => await DeleteSelectedConfigItemAsync(), _ => SelectedConfigItem != null);
             RefreshConfigListCommand = new AsyncRelayCommand(async _ => await LoadConfigListAsync());
+            RefreshSshCommand = new RelayCommand(_ => LoadSshEntries());
+            OpenSshFolderCommand = new RelayCommand(_ => OpenSshFolder());
+            CopyGitConfigPathCommand = new RelayCommand(_ => CopyPathToClipboard(GitConfigPathDisplay));
+            CopySshPathCommand = new RelayCommand(_ => CopyPathToClipboard(SshFolderPathDisplay));
+            // 「创建密钥对」先弹对话框，确认后由界面回调 CreateSshKeyCommand 真正执行
+            AddSshKeyCommand = new RelayCommand(_ => StartCreateSshKey());
+            CreateSshKeyCommand = new AsyncRelayCommand(async _ => await CreateSshKeyAsync());
+
+            // 行内按钮：预览（只读）/ 编辑（可改）/ 删除，条目本身作为参数传进来
+            OpenSshEntryCommand = new RelayCommand(parameter => OpenSshEntry(parameter as SshListEntry, false));
+            PreviewSshEntryCommand = new RelayCommand(parameter => OpenSshEntry(parameter as SshListEntry, true));
+            DeleteSshEntryCommand = new AsyncRelayCommand(
+                async parameter => await DeleteSshEntryAsync(parameter as SshListEntry));
+            CreateWhitelistFileCommand = new RelayCommand(_ => CreateWhitelistFile());
+            ReconcileWhitelistCommand = new RelayCommand(_ => StartReconcileWhitelist());
+            CopyEnvironmentCommand = new RelayCommand(_ => CopyEnvironmentInfo());
         }
 
         public async Task InitializeAsync()
@@ -292,6 +424,10 @@ namespace GitConfigTool.ViewModels
                     AppendCommandLog(_storage.MigrationNote);
 
                 await LoadProfilesJsonAsync();
+                LoadSshEntries();
+                LoadEnvironmentText();
+
+                StartWatching();
 
                 StatusMessage = "加载完成";
             }
@@ -318,6 +454,8 @@ namespace GitConfigTool.ViewModels
                 await LoadConfigListAsync();
                 await RefreshGithubFromLogAsync("刷新全部");
                 await LoadProfilesJsonAsync();
+                LoadSshEntries();
+                LoadEnvironmentText();
                 AppendCommandLog("刷新全部：完成");
                 StatusMessage = "刷新完成 " + DateTime.Now.ToString("HH:mm:ss");
             }
@@ -332,20 +470,140 @@ namespace GitConfigTool.ViewModels
             }
         }
 
+        /// <summary>
+        /// 监听配置文件、全局 .gitconfig、SSH 目录的外部变化，自动刷新，省去手动点刷新
+        /// </summary>
+        private void StartWatching()
+        {
+            if (_profilesWatcher != null) return;   // 只建一次
+
+            _profilesWatcher = new FolderWatcher(
+                System.IO.Path.GetDirectoryName(_storage.StoragePath), "*.json", OnProfilesFileChanged);
+
+            _gitConfigWatcher = new FolderWatcher(
+                System.IO.Path.GetDirectoryName(_gitService.GetGlobalConfigPath()), ".gitconfig", OnGitConfigFileChanged);
+
+            _sshWatcher = new FolderWatcher(
+                _sshService.SshFolderPath, "*", OnSshFolderChanged);
+        }
+
+        /// <summary>档案数据文件被外部改动</summary>
+        private void OnProfilesFileChanged()
+        {
+            if (IsBusy || _autoRefreshing) return;   // 程序自己在操作，结束后会自行刷新
+            _ = ReloadProfilesFromWatcherAsync();
+        }
+
+        private async Task ReloadProfilesFromWatcherAsync()
+        {
+            _autoRefreshing = true;
+            try
+            {
+                await LoadProfilesAsync();
+                await LoadProfilesJsonAsync();
+                StatusMessage = "配置文件已变化，自动刷新 " + DateTime.Now.ToString("HH:mm:ss");
+            }
+            catch (Exception ex)
+            {
+                AppendErrorLog("自动刷新失败: " + ex.Message);
+            }
+            finally
+            {
+                _autoRefreshing = false;
+            }
+        }
+
+        /// <summary>全局 .gitconfig 被外部改动</summary>
+        private void OnGitConfigFileChanged()
+        {
+            if (IsBusy || _autoRefreshing) return;
+            _ = ReloadGitConfigFromWatcherAsync();
+        }
+
+        private async Task ReloadGitConfigFromWatcherAsync()
+        {
+            _autoRefreshing = true;
+            try
+            {
+                await RefreshCurrentUserAsync();
+                await LoadProfilesAsync();
+                StatusMessage = "git 配置已变化，自动刷新 " + DateTime.Now.ToString("HH:mm:ss");
+            }
+            catch (Exception ex)
+            {
+                AppendErrorLog("自动刷新失败: " + ex.Message);
+            }
+            finally
+            {
+                _autoRefreshing = false;
+            }
+        }
+
+        /// <summary>SSH 目录被外部改动</summary>
+        private void OnSshFolderChanged()
+        {
+            if (IsBusy) return;
+
+            LoadSshEntries();
+            StatusMessage = "SSH 目录已变化，自动刷新 " + DateTime.Now.ToString("HH:mm:ss");
+        }
+
+        public void Dispose()
+        {
+            _profilesWatcher?.Dispose();
+            _gitConfigWatcher?.Dispose();
+            _sshWatcher?.Dispose();
+            _profilesWatcher = null;
+            _gitConfigWatcher = null;
+            _sshWatcher = null;
+        }
+
         private async Task LoadProfilesAsync()
         {
             var list = await _storage.LoadProfilesAsync();
             Profiles.Clear();
-            foreach (var p in list.OrderByDescending(x => x.LastUsedAt))
+            // 按创建时间升序，新建的档案排在最后
+            foreach (var p in list.OrderBy(x => x.CreatedAt))
                 Profiles.Add(p);
 
             var user = await _gitService.GetCurrentUserAsync();
             foreach (var p in Profiles)
-            {
-                p.IsActive = string.Equals(p.UserName, user.Name, StringComparison.OrdinalIgnoreCase)
-                          && string.Equals(p.Email, user.Email, StringComparison.OrdinalIgnoreCase);
-            }
+                p.IsActive = MatchesCurrent(p, user);
         }
+
+        /// <summary>
+        /// 判断档案是否与当前全局配置完全一致（即「使用中」）。
+        /// 只比对「应用此档案」真正会写入的项：
+        /// 姓名、邮箱、两个签名开关必定写入；密钥、签名格式、凭据助手、HTTPS 后端
+        /// 在档案里为空时不会被修改，所以那几项只在档案有值时才比对。
+        /// </summary>
+        private static bool MatchesCurrent(GitProfile profile,
+            (string Name, string Email, string SigningKey, string SigningFormat,
+             bool CommitSign, bool TagSign, string CredentialHelper, string SslBackend) user)
+        {
+            if (!TextEquals(profile.UserName, user.Name)) return false;
+            if (!TextEquals(profile.Email, user.Email)) return false;
+            if (profile.CommitGpgsign != user.CommitSign) return false;
+            if (profile.TagGpgsign != user.TagSign) return false;
+
+            // 档案里没有签名密钥时，应用动作会把全局的签名密钥清掉，所以当前也必须为空
+            if (!TextEquals(profile.SigningKey, user.SigningKey)) return false;
+
+            if (!string.IsNullOrWhiteSpace(profile.SigningFormat) &&
+                !TextEquals(profile.SigningFormat, user.SigningFormat)) return false;
+
+            if (!string.IsNullOrWhiteSpace(profile.CredentialHelper) &&
+                !TextEquals(profile.CredentialHelper, user.CredentialHelper)) return false;
+
+            if (!string.IsNullOrWhiteSpace(profile.SslBackend) &&
+                !TextEquals(profile.SslBackend, user.SslBackend)) return false;
+
+            return true;
+        }
+
+        private static bool TextEquals(string left, string right) =>
+            string.Equals((left ?? string.Empty).Trim(), (right ?? string.Empty).Trim(),
+                StringComparison.OrdinalIgnoreCase);
 
         private async Task RefreshCurrentUserAsync()
         {
@@ -357,7 +615,7 @@ namespace GitConfigTool.ViewModels
             CurrentSigningFormat = user.SigningFormat ?? "openpgp";
             CurrentCommitSign = user.CommitSign;
 
-            // 「当前全局配置」展示的键值列表（数据驱动，增减键只改这里）
+            // 「当前全局配置」展示的键值列表
             CurrentConfigRows.Clear();
             AddConfigRow("user.name", "提交者姓名", user.Name);
             AddConfigRow("user.email", "提交者邮箱", user.Email);
@@ -370,8 +628,7 @@ namespace GitConfigTool.ViewModels
         }
 
         /// <summary>
-        /// 追加一行全局配置展示；值为空时不显示该行。
-        /// 界面只展示中文名称，configKey 仅用于标识与将来扩展。
+        /// 追加一行全局配置展示，值为空时不显示该行
         /// </summary>
         private void AddConfigRow(string configKey, string displayName, string value)
         {
@@ -394,8 +651,320 @@ namespace GitConfigTool.ViewModels
                 ConfigItems.Add(item);
         }
 
+        /// <summary>重新读取 SSH 目录条目列表</summary>
+        private void LoadSshEntries()
+        {
+            SshEntries.Clear();
+            foreach (var entry in _sshService.ListEntries())
+                SshEntries.Add(entry);
+
+            SelectedSshEntry = null;
+            OnPropertyChanged(nameof(IsSshListEmpty));
+            OnPropertyChanged(nameof(SshStatusText));
+        }
+
         /// <summary>
-        /// 刷新 gh 账号列表（不写命令记录，供初始化等场景使用）
+        /// 打开创建密钥对话框：密钥名默认取一个未被占用的 id_ed25519 变体
+        /// </summary>
+        private void StartCreateSshKey()
+        {
+            var used = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in SshEntries) used.Add(entry.Name);
+
+            var name = "id_ed25519";
+            for (int i = 2; used.Contains(name); i++)
+                name = "id_ed25519_" + i;
+
+            KeyRequest = new SshKeyRequest
+            {
+                KeyName = name,
+                KeyType = "ed25519",
+                Comment = string.Empty,
+                Passphrase = string.Empty
+            };
+
+            OnPropertyChanged(nameof(KeyRequest));
+            RequestCreateSshKey?.Invoke(this, EventArgs.Empty);
+        }
+
+        /// <summary>请求界面弹出创建密钥对话框</summary>
+        public event EventHandler RequestCreateSshKey;
+
+        /// <summary>
+        /// 读取密钥对内容，供独立窗口显示；读不到时返回 null
+        /// </summary>
+        public SshKeyPairContent LoadKeyPairContent(SshListEntry entry)
+        {
+            return entry == null ? null : _sshService.LoadKeyPairContent(entry.Name);
+        }
+
+        /// <summary>
+        /// 新建空的白名单文件，成功后占位条目会被真实条目替换
+        /// </summary>
+        private void CreateWhitelistFile()
+        {
+            AppendCommandLog("创建 SSH 签名白名单文件");
+
+            var result = _sshService.CreateWhitelistFile();
+            if (result.Ok)
+            {
+                AppendSuccessLog("-> " + result.Message);
+                LoadSshEntries();
+            }
+            else
+            {
+                AppendErrorLog("-> " + result.Message);
+                MessageBox.Show(result.Message, "创建失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            StatusMessage = result.Message;
+        }
+
+        /// <summary>
+        /// 请求界面弹出白名单对账窗口
+        /// </summary>
+        public event Action<WhitelistReconcileResult> RequestReconcileWhitelist;
+
+        /// <summary>
+        /// 比对密钥对与白名单，把结果交给界面弹窗确认
+        /// </summary>
+        private void StartReconcileWhitelist()
+        {
+            // 本机自己的邮箱：当前 git 邮箱 + 所有档案里的邮箱，用于判断白名单条目归属
+            var ownEmails = new List<string> { CurrentUserEmail };
+            foreach (var profile in Profiles) ownEmails.Add(profile.Email);
+
+            AppendCommandLog("识别密钥项目：比对密钥对与白名单");
+
+            var items = _sshService.AnalyzeWhitelist(ownEmails);
+            RequestReconcileWhitelist?.Invoke(new WhitelistReconcileResult { Items = items });
+        }
+
+        /// <summary>
+        /// 应用对账窗口里勾选的修改
+        /// </summary>
+        public void ApplyWhitelistChanges(IReadOnlyList<WhitelistReconcileItem> items)
+        {
+            var result = _sshService.ApplyWhitelistChanges(items);
+            if (result.Ok)
+            {
+                AppendSuccessLog("-> " + result.Message);
+                LoadSshEntries();
+            }
+            else
+            {
+                AppendErrorLog("-> " + result.Message);
+                MessageBox.Show(result.Message, "操作失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            StatusMessage = result.Message;
+        }
+
+        /// <summary>
+        /// 读取白名单内容，供独立窗口显示；读不到时返回 null
+        /// </summary>
+        public SshWhitelistContent LoadWhitelistContent()
+        {
+            return _sshService.LoadWhitelistContent();
+        }
+
+        /// <summary>
+        /// 保存独立窗口里编辑过的白名单内容
+        /// </summary>
+        public void SaveWhitelistContent(SshWhitelistContent content)
+        {
+            if (content == null) return;
+
+            AppendCommandLog("保存 SSH 签名白名单");
+
+            var result = _sshService.SaveWhitelistContent(content);
+            if (result.Ok)
+            {
+                AppendSuccessLog("-> " + result.Message);
+                LoadSshEntries();
+            }
+            else
+            {
+                AppendErrorLog("-> " + result.Message);
+                MessageBox.Show(result.Message, "保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            StatusMessage = result.Message;
+        }
+
+        /// <summary>
+        /// 保存独立窗口里编辑过的密钥内容
+        /// </summary>
+        public void SaveKeyPairContent(SshKeyPairContent content)
+        {
+            if (content == null) return;
+
+            AppendCommandLog("保存 SSH 密钥 " + content.Name);
+
+            var result = _sshService.SaveKeyPairContent(content);
+            if (result.Ok)
+            {
+                AppendSuccessLog("-> " + result.Message);
+                LoadSshEntries();
+            }
+            else
+            {
+                AppendErrorLog("-> " + result.Message);
+                MessageBox.Show(result.Message, "保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+            StatusMessage = result.Message;
+        }
+
+        /// <summary>
+        /// 调用 ssh-keygen 生成密钥对
+        /// </summary>
+        private async Task CreateSshKeyAsync()
+        {
+            var request = KeyRequest;
+            if (request == null) return;
+
+            IsBusy = true;
+            StatusMessage = "正在生成密钥对...";
+            try
+            {
+                AppendCommandLog("生成 SSH 密钥对");
+                AppendCommandLine("ssh-keygen -t " + request.KeyType + " -f " + request.KeyName);
+
+                var result = await Task.Run(() => _sshService.CreateKeyPair(request));
+                if (result.Success)
+                {
+                    AppendSuccessLog("-> " + result.Message);
+                    LoadSshEntries();
+                }
+                else
+                {
+                    AppendErrorLog("-> " + result.Message);
+                    MessageBox.Show(result.Message, "创建失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                }
+                StatusMessage = result.Message;
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        /// <summary>
+        /// 请求界面打开某个条目的独立窗口（密钥窗口或白名单窗口）；readOnly 为 true 时只读预览
+        /// </summary>
+        public event Action<SshListEntry, bool> RequestOpenSshEntry;
+
+        private void OpenSshEntry(SshListEntry entry, bool readOnly)
+        {
+            if (entry == null || !entry.IsRealEntry) return;
+            RequestOpenSshEntry?.Invoke(entry, readOnly);
+        }
+
+        /// <summary>
+        /// 删除条目：密钥对删私钥与公钥，白名单删白名单文件；文件移到回收站
+        /// </summary>
+        private async Task DeleteSshEntryAsync(SshListEntry entry)
+        {
+            if (entry == null || !entry.IsRealEntry) return;
+
+            var files = entry.IsWhitelist
+                ? _sshService.GetWhitelistFiles()
+                : _sshService.GetKeyPairFiles(entry.Name);
+
+            if (files.Count == 0)
+            {
+                MessageBox.Show("没有找到「" + entry.Name + "」对应的文件。",
+                    "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            var what = entry.IsWhitelist ? "白名单" : "密钥「" + entry.Name + "」";
+            var text = "确定删除" + what + "吗？\n\n" +
+                       "以下文件将移到回收站（可以恢复）：\n" +
+                       string.Join("\n", files);
+
+            if (entry.IsWhitelist)
+                text += "\n\n注意：删除后，本机校验提交签名会找不到信任的标识。";
+            else if (entry.HasPrivateKey)
+                text += "\n\n注意：私钥删除后，用该密钥签名的提交将无法再验证。";
+
+            if (MessageBox.Show(text, "确认删除", MessageBoxButton.OKCancel, MessageBoxImage.Warning)
+                != MessageBoxResult.OK)
+                return;
+
+            IsBusy = true;
+            StatusMessage = "正在删除...";
+            try
+            {
+                AppendCommandLog("删除 SSH " + (entry.IsWhitelist ? "签名白名单" : "密钥对 " + entry.Name));
+
+                var ok = await Task.Run(() => RecycleBin.MoveToRecycleBin(files));
+                if (ok)
+                {
+                    var message = "已删除" + what + "，文件在回收站";
+                    AppendSuccessLog("-> " + message);
+                    LoadSshEntries();
+                    StatusMessage = message;
+                }
+                else
+                {
+                    var message = "移到回收站失败，文件未被删除";
+                    AppendErrorLog("-> " + message);
+                    MessageBox.Show(message + "。", "删除失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                    StatusMessage = message;
+                }
+            }
+            finally
+            {
+                IsBusy = false;
+            }
+        }
+
+        /// <summary>
+        /// 在资源管理器中打开 SSH 目录；目录不存在时给出提示
+        /// </summary>
+        private void OpenSshFolder()
+        {
+            var dir = _sshService.SshFolderPath;
+            if (!_sshService.FolderExists)
+            {
+                MessageBox.Show("SSH 目录不存在：\n" + dir, "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                return;
+            }
+
+            try
+            {
+                Process.Start(new ProcessStartInfo
+                {
+                    FileName = "explorer.exe",
+                    Arguments = "\"" + dir + "\"",
+                    UseShellExecute = true
+                });
+                StatusMessage = "已打开 SSH 目录: " + dir;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("无法打开目录: " + ex.Message + "\n\n路径: " + dir,
+                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+        }
+
+        /// <summary>
+        /// 把路径复制到剪贴板
+        /// </summary>
+        private void CopyPathToClipboard(string path)
+        {
+            if (string.IsNullOrEmpty(path)) return;
+            try
+            {
+                Clipboard.SetText(path);
+                StatusMessage = "已复制路径: " + path;
+            }
+            catch (Exception ex)
+            {
+                MessageBox.Show("复制失败：" + ex.Message, "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            }
+        }
+
+        /// <summary>
+        /// 刷新 gh 账号列表，不写命令记录
         /// </summary>
         private async Task RefreshGithubAsync()
         {
@@ -404,7 +973,7 @@ namespace GitConfigTool.ViewModels
         }
 
         /// <summary>
-        /// 只重新读取账号列表（gh 原始输出已在刷新前取得）
+        /// 只重新读取账号列表
         /// </summary>
         private async Task RefreshGithubAccountsAsync()
         {
@@ -414,21 +983,29 @@ namespace GitConfigTool.ViewModels
                 GithubAccounts.Add(a);
         }
 
-        private async Task ApplySelectedProfileAsync()
+        /// <summary>
+        /// 把指定档案应用到全局 .gitconfig；profile 为空时使用当前选中项
+        /// </summary>
+        private async Task ApplyProfileAsync(GitProfile profile)
         {
-            if (SelectedProfile == null) return;
+            var target = profile ?? SelectedProfile;
+            if (target == null) return;
+
+            // 同步选中该行
+            SelectedProfile = target;
+
             IsBusy = true;
-            StatusMessage = $"正在应用档案「{SelectedProfile.UserName}」...";
+            StatusMessage = $"正在应用档案「{target.UserName}」...";
             try
             {
-                var result = await _gitService.ApplyProfileAsync(SelectedProfile);
+                var result = await _gitService.ApplyProfileAsync(target);
                 if (result.Success)
                 {
-                    SelectedProfile.LastUsedAt = DateTime.Now;
-                    SelectedProfile.IsActive = true;
+                    target.LastUsedAt = DateTime.Now;
+                    target.IsActive = true;
                     foreach (var p in Profiles)
-                        if (p.Id != SelectedProfile.Id) p.IsActive = false;
-                    await _storage.UpsertProfileAsync(SelectedProfile);
+                        if (p.Id != target.Id) p.IsActive = false;
+                    await _storage.UpsertProfileAsync(target);
                     await RefreshCurrentUserAsync();
                     await LoadConfigListAsync();
                     StatusMessage = result.Message;
@@ -466,24 +1043,30 @@ namespace GitConfigTool.ViewModels
             RequestEditProfile?.Invoke(this, EventArgs.Empty);
         }
 
-        private void StartEditProfile()
+        /// <summary>
+        /// 编辑指定档案；profile 为空时使用当前选中项
+        /// </summary>
+        private void StartEditProfile(GitProfile profile)
         {
-            if (SelectedProfile == null) return;
+            var target = profile ?? SelectedProfile;
+            if (target == null) return;
+
+            SelectedProfile = target;
             EditingProfile = new GitProfile
             {
-                Id = SelectedProfile.Id,
-                UserName = SelectedProfile.UserName,
-                Email = SelectedProfile.Email,
-                SigningKey = SelectedProfile.SigningKey,
-                SigningFormat = SelectedProfile.SigningFormat,
-                CommitGpgsign = SelectedProfile.CommitGpgsign,
-                TagGpgsign = SelectedProfile.TagGpgsign,
-                SshKeyPath = SelectedProfile.SshKeyPath,
-                GithubUsername = SelectedProfile.GithubUsername,
-                CredentialHelper = SelectedProfile.CredentialHelper,
-                SslBackend = SelectedProfile.SslBackend,
-                CreatedAt = SelectedProfile.CreatedAt,
-                LastUsedAt = SelectedProfile.LastUsedAt
+                Id = target.Id,
+                UserName = target.UserName,
+                Email = target.Email,
+                SigningKey = target.SigningKey,
+                SigningFormat = target.SigningFormat,
+                CommitGpgsign = target.CommitGpgsign,
+                TagGpgsign = target.TagGpgsign,
+                SshKeyPath = target.SshKeyPath,
+                GithubUsername = target.GithubUsername,
+                CredentialHelper = target.CredentialHelper,
+                SslBackend = target.SslBackend,
+                CreatedAt = target.CreatedAt,
+                LastUsedAt = target.LastUsedAt
             };
             OnPropertyChanged(nameof(EditingProfile));
             RequestEditProfile?.Invoke(this, EventArgs.Empty);
@@ -509,18 +1092,23 @@ namespace GitConfigTool.ViewModels
 
         public event EventHandler RequestCloseEditDialog;
 
-        private async Task DeleteSelectedProfileAsync()
+        /// <summary>
+        /// 删除指定档案；profile 为空时使用当前选中项
+        /// </summary>
+        private async Task DeleteProfileAsync(GitProfile profile)
         {
-            if (SelectedProfile == null) return;
-            var result = MessageBox.Show($"确定删除档案「{SelectedProfile.UserName}」吗？", "确认删除",
+            var target = profile ?? SelectedProfile;
+            if (target == null) return;
+
+            var result = MessageBox.Show($"确定删除档案「{target.UserName}」吗？", "确认删除",
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (result != MessageBoxResult.Yes) return;
 
-            await _storage.DeleteProfileAsync(SelectedProfile.Id);
+            await _storage.DeleteProfileAsync(target.Id);
             await LoadProfilesAsync();
             await LoadProfilesJsonAsync();
             SelectedProfile = null;
-            StatusMessage = "档案已删除";
+            StatusMessage = $"档案「{target.UserName}」已删除";
         }
 
         private async Task CaptureCurrentAsProfileAsync()
@@ -563,7 +1151,7 @@ namespace GitConfigTool.ViewModels
         }
 
         /// <summary>
-        /// 切换 gh 账号；account 为空时使用当前选中项（顶部按钮走这条路）
+        /// 切换 gh 账号；account 为空时使用当前选中项
         /// </summary>
         private async Task SwitchGithubAccountAsync(GithubAccount account)
         {
@@ -608,8 +1196,7 @@ namespace GitConfigTool.ViewModels
         }
 
         /// <summary>
-        /// 登录新的 GitHub 账号（浏览器设备码授权）
-        /// 不阻塞界面：gh 会一直等到用户完成浏览器授权，这里负责启动、读取设备码、开浏览器、轮询检测
+        /// 登录新的 GitHub 账号（浏览器设备码授权），不阻塞界面
         /// </summary>
         private async Task LoginGithubAsync()
         {
@@ -619,7 +1206,7 @@ namespace GitConfigTool.ViewModels
                 return;
             }
 
-            // 清掉上一次残留的登录进程，避免堆积
+            // 清掉上一次残留的登录进程
             KillCurrentLoginProcess();
 
             var before = GithubAccounts.Count;
@@ -662,7 +1249,7 @@ namespace GitConfigTool.ViewModels
                         }
                     }
 
-                    // 2) 取授权地址，并由本程序打开浏览器（gh 自身打开浏览器在本机不可靠）
+                    // 2) 取授权地址并打开浏览器
                     if (!urlOpened)
                     {
                         var url = _ghService.ExtractVerificationUrl() ?? DefaultGithubDeviceUrl;
@@ -692,7 +1279,7 @@ namespace GitConfigTool.ViewModels
                         return;
                     }
 
-                    // 4) gh 进程自己退出了：说明本次登录结束（成功则上面已返回，走到这里就是失败）
+                    // 4) gh 进程已退出，说明本次登录结束
                     if (start.Process != null && start.Process.HasExited)
                     {
                         await RefreshGithubFromLogAsync();
@@ -752,7 +1339,7 @@ namespace GitConfigTool.ViewModels
         }
 
         /// <summary>
-        /// 结束当前登录进程（登录成功、失败或超时后都要清理，避免 gh 进程堆积）
+        /// 结束当前登录进程
         /// </summary>
         private void KillCurrentLoginProcess()
         {
@@ -828,8 +1415,7 @@ namespace GitConfigTool.ViewModels
 
         /// <summary>
         /// 清理 Windows 凭据管理器里 gh 已不再登录的残留凭据。
-        /// gh auth logout 不会删 keyring 条目，会留下 token 仍有效的孤儿凭据，因此这里补上。
-        /// 静默执行，不弹窗，只在命令记录和状态栏体现。返回清理条数。
+        /// 静默执行，不弹窗。返回清理条数。
         /// </summary>
         private int CleanupOrphanedCredentials()
         {
@@ -964,7 +1550,7 @@ namespace GitConfigTool.ViewModels
                 {
                     SelectedGithubAccount = null;
                     await RefreshGithubFromLogAsync("退出登录后刷新");
-                    // gh auth logout 不会清理 keyring，这里补上，避免留下 token 仍有效的孤儿凭据
+                    // gh auth logout 不会清理 keyring，这里补上
                     var cleaned = CleanupOrphanedCredentials();
                     StatusMessage = cleaned > 0
                         ? $"已退出登录 {target.Username}，并清理 {cleaned} 条残留凭据"
@@ -987,7 +1573,7 @@ namespace GitConfigTool.ViewModels
             }
         }
         /// <summary>
-        /// 刷新档案数据文件路径（原始内容展示已随「档案数据」标签页移除，这里只保留路径）
+        /// 刷新档案数据文件路径
         /// </summary>
         private Task LoadProfilesJsonAsync()
         {
