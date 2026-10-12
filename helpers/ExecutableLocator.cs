@@ -7,12 +7,11 @@ using System.Text;
 namespace GitConfigTool.Helpers
 {
     /// <summary>
-    /// 外部命令（git / gh）定位工具。
-    /// 只用三层可靠途径探测，不猜路径：
+    /// 外部命令（git / gh）定位工具，按三层依次探测：
     ///   1) 注册表记录的安装位置（Git for Windows 会写，GitHub CLI 不写）
-    ///   2) where.exe（Windows 原生解析器，等价于但不弱于读 PATH 环境变量）
+    ///   2) where.exe（Windows 原生解析器）
     ///   3) 系统 PATH 逐目录查找
-    /// 所有候选都会实际执行一次 --version 验证，避免误判。
+    /// 每个候选都会实际执行一次 --version 验证。
     /// </summary>
     public static class ExecutableLocator
     {
@@ -53,9 +52,8 @@ namespace GitConfigTool.Helpers
         }
 
         /// <summary>
-        /// 定位 Git 自带的工具（ssh-keygen / gpg / ssh 等）。
-        /// 这些工具随 Git for Windows 一起安装，但通常不在 PATH 里，
-        /// 因此先从注册表记录的 Git 安装根目录派生，再回退到通用探测。
+        /// 定位 Git 自带的工具（ssh-keygen / gpg / ssh 等）：
+        /// 先从注册表记录的 Git 安装根目录派生，再回退到通用探测。
         /// </summary>
         /// <param name="exeName">工具文件名，例如 ssh-keygen.exe</param>
         public static string LocateGitTool(string exeName)
@@ -198,7 +196,7 @@ namespace GitConfigTool.Helpers
         }
 
         /// <summary>
-        /// 实际执行 --version 验证，避免把同名但不是目标的文件当成有效
+        /// 执行 --version 验证该文件是否可用
         /// </summary>
         private static bool IsValid(string path)
         {

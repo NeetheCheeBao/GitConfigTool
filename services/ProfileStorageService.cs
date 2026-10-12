@@ -37,8 +37,7 @@ namespace GitConfigTool.Services
         }
 
         /// <summary>
-        /// 把旧版 profiles.json 迁移为 GitConfig.json。
-        /// 仅在旧文件存在且新文件不存在时执行，避免覆盖已有数据。
+        /// 把旧版 profiles.json 迁移为 GitConfig.json，仅在旧文件存在且新文件不存在时执行
         /// </summary>
         private void MigrateLegacyFile(string dir)
         {
@@ -174,7 +173,7 @@ namespace GitConfigTool.Services
                 p.Id = GetStr(block, "id") ?? p.Id;
                 p.UserName = GetStr(block, "userName") ?? "";
                 p.Email = GetStr(block, "email") ?? "";
-                // 兼容旧数据：早期版本有独立的 name 字段，这里回退使用，避免显示空白
+                // 兼容旧数据：早期版本用 name 字段
                 if (string.IsNullOrEmpty(p.UserName))
                     p.UserName = GetStr(block, "name") ?? "";
                 p.SigningKey = GetStr(block, "signingKey") ?? "";

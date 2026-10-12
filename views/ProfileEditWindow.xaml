@@ -14,7 +14,7 @@
 
         <ScrollViewer VerticalScrollBarVisibility="Auto">
             <StackPanel>
-                <!-- 档案显示名直接用 Git user.name，不再单独维护"显示用名称" -->
+                <!-- 档案显示名使用 Git user.name -->
                 <TextBlock Text="Git user.name" Margin="0,0,0,4"/>
                 <TextBox Text="{Binding UserName, UpdateSourceTrigger=PropertyChanged}"/>
 

@@ -20,7 +20,7 @@ namespace GitConfigTool.Services
         /// <summary>探测失败时的原因，供界面提示</summary>
         public string DiscoveryError { get; private set; }
 
-        /// <summary>探测到的 gh 可执行文件完整路径（供界面显示，便于排查）</summary>
+        /// <summary>探测到的 gh 可执行文件完整路径（供界面显示）</summary>
         public string GhExecutablePath => _ghPath;
 
         public GithubCliService()
@@ -86,8 +86,7 @@ namespace GitConfigTool.Services
                 if (blockHost.StartsWith("\u2713", StringComparison.Ordinal)) continue;
                 if (blockHost.StartsWith("X", StringComparison.Ordinal)) continue;
 
-                // 一个主机下可能登录了多个账号：逐行遍历，每个账号独立解析，
-                // 否则第二个账号会被第一个的 Active 状态覆盖或直接丢失
+                // 一个主机下可能登录多个账号，逐行解析，每个账号独立取值
                 string currentUser = null;
 
                 foreach (var rawLine in block.Split('\n'))
@@ -207,10 +206,8 @@ namespace GitConfigTool.Services
         public bool HasLoginStream { get; private set; }
 
         /// <summary>
-        /// 启动登录流程：走浏览器设备码授权，并让 gh 把一次性设备码复制到剪贴板。
-        /// 故意不等待进程退出——gh 会一直等到用户完成浏览器授权，阻塞等待会冻住界面。
-        /// gh 自身的浏览器启动在本机不可靠，因此由界面层负责打开浏览器。
-        /// 调用方应轮询账号变化来判断是否登录成功。
+        /// 启动登录流程：浏览器设备码授权，并让 gh 把一次性设备码复制到剪贴板。
+        /// 不等待进程退出；调用方轮询账号变化判断是否登录成功。
         /// </summary>
         public (bool Success, string Message, Process Process) StartLoginWithClipboard(string host = "github.com", string protocol = "https")
         {

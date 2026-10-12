@@ -5,12 +5,9 @@ using System.Runtime.InteropServices;
 namespace GitConfigTool.Helpers
 {
     /// <summary>
-    /// Windows 凭据管理器中的 gh 残留凭据清理。
-    /// 背景：gh auth logout 只删除 hosts.yml 里的配置，不会清理 keyring 里的 token，
-    /// 于是留下"gh 管不到、但 token 仍然有效"的孤儿凭据。此处按 gh 的登录列表反查并删除。
-    ///
-    /// 实现使用微软官方 Win32 凭据管理 API（advapi32.dll 的 CredEnumerate/CredDelete/CredFree），
-    /// 返回结构化数据，不依赖系统语言，也不解析任何命令行工具的输出。
+    /// Windows 凭据管理器中 gh 残留凭据的清理。
+    /// gh auth logout 不会清理 keyring 里的 token，会留下孤儿凭据，这里按 gh 的登录列表反查并删除。
+    /// 使用 Win32 凭据管理 API（advapi32.dll）。
     /// </summary>
     public static class CredentialCleaner
     {
@@ -19,13 +16,8 @@ namespace GitConfigTool.Helpers
 
         /// <summary>
         /// 清理 gh 已不再登录的残留凭据。
-        /// <para>
-        /// 有账号登录时：只删除能确定归属（形如 gh:&lt;host&gt;:&lt;user&gt;）且该账号已不在登录列表中的条目；
-        /// 无用户名条目（gh:&lt;host&gt;:）是 gh 给 git 用的"当前账号"指针，必须保留。
-        /// </para>
-        /// <para>
-        /// 一个账号都不存在时：该主机下所有 gh 条目都已无人使用，包括那个指针，一并清除。
-        /// </para>
+        /// 有账号登录时，只删除能确定归属（gh:&lt;host&gt;:&lt;user&gt;）且该账号已不在登录列表中的条目，
+        /// 无用户名条目（gh:&lt;host&gt;:）保留；一个账号都不存在时，清除该主机下的全部 gh 条目。
         /// </summary>
         /// <param name="loggedInUsers">gh 当前已登录的用户名集合</param>
         /// <returns>被删除的目标名列表</returns>
@@ -57,7 +49,7 @@ namespace GitConfigTool.Helpers
 
         /// <summary>
         /// 解析凭据目标名：gh:&lt;host&gt;:&lt;user&gt;
-        /// 无法确定归属的条目（例如没有用户名的默认条目）返回 false，避免误删
+        /// 没有用户名部分的条目返回 false
         /// </summary>
         private static bool TryParseTarget(string target, out string host, out string user)
         {

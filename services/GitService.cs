@@ -51,7 +51,7 @@ namespace GitConfigTool.Services
             });
         }
 
-        /// <summary>探测到的 git 可执行文件完整路径（供界面显示，便于排查）</summary>
+        /// <summary>探测到的 git 可执行文件完整路径（供界面显示）</summary>
         public string GitExecutablePath => _gitPath;
 
         /// <summary>
@@ -204,7 +204,7 @@ namespace GitConfigTool.Services
                 results.Add("credential.helper");
             }
 
-            // HTTPS 后端：留空表示不修改（避免误改现有值）
+            // HTTPS 后端留空表示不修改
             if (!string.IsNullOrWhiteSpace(profile.SslBackend))
             {
                 await SetConfigAsync("http.sslBackend", profile.SslBackend);
