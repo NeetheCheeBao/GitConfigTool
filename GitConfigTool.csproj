@@ -1,5 +1,22 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- 名称与版本号来自根目录 version.ini -->
+  <PropertyGroup>
+    <VersionIniFile>$(MSBuildProjectDirectory)\version.ini</VersionIniFile>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="Exists('$(VersionIniFile)')">
+    <_VersionIniText>$([System.IO.File]::ReadAllText('$(VersionIniFile)'))</_VersionIniText>
+    <AppName>$([System.Text.RegularExpressions.Regex]::Match($(_VersionIniText), '(?im)(?&lt;=^[ \t]*name[ \t]*=[ \t]*)[^\r\n]*?(?=[ \t]*$)').Value)</AppName>
+    <AppVersion>$([System.Text.RegularExpressions.Regex]::Match($(_VersionIniText), '(?im)(?&lt;=^[ \t]*version[ \t]*=[ \t]*)[^\r\n]*?(?=[ \t]*$)').Value)</AppVersion>
+  </PropertyGroup>
+
+  <!-- version.ini 缺失或字段为空时的默认值 -->
+  <PropertyGroup>
+    <AppName Condition="'$(AppName)' == ''">GitConfigTool</AppName>
+    <AppVersion Condition="'$(AppVersion)' == ''">2.0.0</AppVersion>
+  </PropertyGroup>
+
   <PropertyGroup>
     <OutputType>WinExe</OutputType>
     <TargetFramework>net48</TargetFramework>
@@ -9,11 +26,19 @@
     <ImplicitUsings>disable</ImplicitUsings>
     <AssemblyName>GitConfigTool</AssemblyName>
     <RootNamespace>GitConfigTool</RootNamespace>
-    <Version>1.0.0</Version>
+
+    <!-- 名称与版本来自 version.ini -->
+    <Version>$(AppVersion)</Version>
+    <FileVersion>$(AppVersion)</FileVersion>
+    <InformationalVersion>$(AppVersion)</InformationalVersion>
+    <!-- 不在版本号后拼接 git 提交哈希 -->
+    <IncludeSourceRevisionInInformationalVersion>false</IncludeSourceRevisionInInformationalVersion>
+    <Product>$(AppName)</Product>
+    <AssemblyTitle>$(AppName)</AssemblyTitle>
     <Company>NeetheCheeBao</Company>
     <Authors>NeetheCheeBao</Authors>
-    <Product>GitConfigTool</Product>
     <Description>Windows Git config manager</Description>
+
     <ApplicationIcon>assets\icon.ico</ApplicationIcon>
     <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
     <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
