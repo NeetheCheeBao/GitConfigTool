@@ -24,8 +24,8 @@ namespace GitConfigTool.Views
             ReadOnly = readOnly;
             DataContext = KeyPair;
 
-            Title = (readOnly ? "密钥预览 - " : "密钥内容 - ") + content.Name;
-            TitleText.Text = readOnly ? content.Name + "（只读）" : content.Name;
+            Title = (readOnly ? Helpers.Localization.T("rt.198") : Helpers.Localization.T("rt.199")) + content.Name;
+            TitleText.Text = readOnly ? content.Name + Helpers.Localization.T("rt.200") : content.Name;
 
             // 文件不存在的框不可编辑；预览模式下两个框都只读
             PrivateBox.IsReadOnly = readOnly || !content.HasPrivateFile;
@@ -34,7 +34,7 @@ namespace GitConfigTool.Views
             if (readOnly)
             {
                 SaveButton.Visibility = Visibility.Collapsed;
-                CancelButton.Content = "关闭";
+                CancelButton.Content = Helpers.Localization.T("rt.201");
             }
         }
 
@@ -59,7 +59,7 @@ namespace GitConfigTool.Views
                 var check = SshKeyValidator.ValidatePrivateKey(KeyPair.PrivateText);
                 if (!check.Ok)
                 {
-                    Warn("私钥内容有误：" + check.Message);
+                    Warn(Helpers.Localization.T("rt.202") + check.Message);
                     return;
                 }
             }
@@ -69,7 +69,7 @@ namespace GitConfigTool.Views
                 var check = SshKeyValidator.ValidatePublicKey(KeyPair.PublicText);
                 if (!check.Ok)
                 {
-                    Warn("公钥内容有误：" + check.Message);
+                    Warn(Helpers.Localization.T("rt.203") + check.Message);
                     return;
                 }
             }
@@ -86,7 +86,7 @@ namespace GitConfigTool.Views
 
         private static void Warn(string message)
         {
-            MessageBox.Show(message, "内容校验未通过", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(message, Helpers.Localization.T("msg.validation_failed"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 }

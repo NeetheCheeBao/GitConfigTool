@@ -24,7 +24,7 @@ namespace GitConfigTool.Views
         {
             if (!Result.Items.Any(i => i.IsSelected && i.CanApply))
             {
-                MessageBox.Show("没有勾选任何修改。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(Helpers.Localization.T("msg.no_selection"), Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 

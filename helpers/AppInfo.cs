@@ -17,7 +17,7 @@ namespace GitConfigTool.Helpers
         public static string Title => Name + "_" + Version;
 
         /// <summary>「关于」页用：版本 2.0.0</summary>
-        public static string VersionText => "版本 " + Version;
+        public static string VersionText => Localization.T("rt.001") + Version;
 
         private static string ReadName()
         {

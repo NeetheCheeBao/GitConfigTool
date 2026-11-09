@@ -76,10 +76,16 @@
                 </Grid.ColumnDefinitions>
                 <StackPanel Orientation="Horizontal" VerticalAlignment="Center">
                     <TextBlock Text="GitConfigTool" FontSize="22" FontWeight="Bold" Foreground="White"/>
-                    <TextBlock Text="  |  Windows Git 多账号管理" FontSize="14" Foreground="#FFAAAAAA" VerticalAlignment="Center" Margin="8,0,0,0"/>
+                    <TextBlock Text="{DynamicResource app.subtitle}" FontSize="14" Foreground="#FFAAAAAA" VerticalAlignment="Center" Margin="8,0,0,0"/>
                 </StackPanel>
                 <StackPanel Grid.Column="1" Orientation="Horizontal">
-                    <Button Content="刷新全部" Command="{Binding RefreshCommand}" Style="{StaticResource SecondaryButton}"/>
+                    <Button x:Name="LanguageMenuButton" Width="34" Padding="0"
+                            ToolTip="{DynamicResource lang.switch_tip}"
+                            Click="LanguageMenuButton_Click">
+                        <TextBlock Text="🌐" FontSize="16" FontFamily="Segoe UI Emoji"
+                                   HorizontalAlignment="Center" VerticalAlignment="Center"/>
+                    </Button>
+                    <Button Content="{DynamicResource main.refresh_all}" Command="{Binding RefreshCommand}" Style="{StaticResource SecondaryButton}"/>
                 </StackPanel>
             </Grid>
         </Border>
@@ -98,8 +104,8 @@
                     <!-- 左侧档案列表 -->
                     <DockPanel Grid.Column="0" Margin="0,0,12,0">
                         <StackPanel DockPanel.Dock="Top" Orientation="Horizontal" Margin="0,0,0,8">
-                            <Button Content="新建档案" Command="{Binding AddProfileCommand}"/>
-                            <Button Content="捕获当前" Command="{Binding CaptureCurrentAsProfileCommand}" Style="{StaticResource SecondaryButton}" ToolTip="将当前 Git 用户配置保存为新档案"/>
+                            <Button Content="{DynamicResource main.new_profile}" Command="{Binding AddProfileCommand}"/>
+                            <Button Content="{DynamicResource main.capture_current}" Command="{Binding CaptureCurrentAsProfileCommand}" Style="{StaticResource SecondaryButton}" ToolTip="{DynamicResource tip.capture_current}"/>
                         </StackPanel>
                         <!-- 配置文件路径，左键打开、右键复制 -->
                         <TextBlock DockPanel.Dock="Top" TextWrapping="Wrap" FontSize="11" Margin="0,0,0,10"
@@ -111,7 +117,7 @@
                             <TextBlock.ToolTip>
                                 <TextBlock>
                                     <Run Text="{Binding GitConfigPath, Mode=OneWay}"/><LineBreak/>
-                                    <Run Text="左键打开所在目录，右键复制路径" Foreground="#FF888888"/>
+                                    <Run Text="{DynamicResource tip.path_link}" Foreground="#FF888888"/>
                                 </TextBlock>
                             </TextBlock.ToolTip>
                             <TextBlock.Style>
@@ -125,7 +131,7 @@
                                     </Style.Triggers>
                                 </Style>
                             </TextBlock.Style>
-                            <Run Text="配置文件："/><Run Text="{Binding GitConfigPathDisplay, Mode=OneWay}"/>
+                            <Run Text="{DynamicResource main.config_file}"/><Run Text="{Binding GitConfigPathDisplay, Mode=OneWay}"/>
                         </TextBlock>
 
                         <ListBox ItemsSource="{Binding Profiles}"
@@ -145,23 +151,23 @@
                                                    TextTrimming="CharacterEllipsis"/>
                                         <!-- 每个档案的操作按钮 -->
                                         <StackPanel Orientation="Horizontal" Margin="0,6,0,0">
-                                            <Button Content="应用此档案"
+                                            <Button Content="{DynamicResource main.apply_profile}"
                                                     Command="{Binding DataContext.ApplyProfileCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                     CommandParameter="{Binding}"
                                                     Style="{StaticResource SuccessButton}"
                                                     Padding="10,3" Margin="0,0,6,0" FontSize="12"
-                                                    ToolTip="把该档案的 user.name / user.email / 签名配置写入全局 .gitconfig"/>
-                                            <Button Content="编辑"
+                                                    ToolTip="{DynamicResource tip.apply_profile}"/>
+                                            <Button Content="{DynamicResource common.edit}"
                                                     Command="{Binding DataContext.EditProfileCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                     CommandParameter="{Binding}"
                                                     Padding="10,3" Margin="0,0,6,0" FontSize="12"
-                                                    ToolTip="编辑该档案"/>
-                                            <Button Content="删除"
+                                                    ToolTip="{DynamicResource tip.edit_profile}"/>
+                                            <Button Content="{DynamicResource common.delete}"
                                                     Command="{Binding DataContext.DeleteProfileCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                     CommandParameter="{Binding}"
                                                     Style="{StaticResource DangerButton}"
                                                     Padding="10,3" Margin="0" FontSize="12"
-                                                    ToolTip="删除该档案（会先二次确认）"/>
+                                                    ToolTip="{DynamicResource tip.delete_profile}"/>
                                         </StackPanel>
                                     </StackPanel>
                                 </DataTemplate>
@@ -180,12 +186,12 @@
                             </Grid.RowDefinitions>
 
                             <DockPanel Grid.Row="0" Margin="0,0,0,12">
-                                <Button DockPanel.Dock="Right" Content="打开配置路径"
+                                <Button DockPanel.Dock="Right" Content="{DynamicResource main.open_config_path}"
                                         Command="{Binding OpenGitConfigLocationCommand}"
                                         Style="{StaticResource SecondaryButton}"
                                         Margin="12,0,0,0"
-                                        ToolTip="在资源管理器中打开 .gitconfig 所在目录并选中该文件"/>
-                                <TextBlock Text="当前全局配置" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
+                                        ToolTip="{DynamicResource tip.open_config_path}"/>
+                                <TextBlock Text="{DynamicResource main.current_global_config}" FontSize="16" FontWeight="Bold" VerticalAlignment="Center"/>
                             </DockPanel>
 
                             <!-- 键值列表由视图模型提供 -->
@@ -210,16 +216,16 @@
                             <!-- 完整配置 -->
                             <DockPanel Grid.Row="2" Margin="0,14,0,8">
                                 <StackPanel DockPanel.Dock="Right" Orientation="Horizontal">
-                                    <Button Content="刷新列表" Command="{Binding RefreshConfigListCommand}"
-                                            ToolTip="重新读取全局 .gitconfig 的全部配置项"/>
-                                    <Button Content="保存选中项" Command="{Binding SaveConfigItemCommand}"
+                                    <Button Content="{DynamicResource main.refresh_list}" Command="{Binding RefreshConfigListCommand}"
+                                            ToolTip="{DynamicResource tip.refresh_list}"/>
+                                    <Button Content="{DynamicResource main.save_selected}" Command="{Binding SaveConfigItemCommand}"
                                             Style="{StaticResource SuccessButton}"
-                                            ToolTip="把选中行编辑后的「值」写回全局 .gitconfig"/>
-                                    <Button Content="删除选中项" Command="{Binding DeleteConfigItemCommand}"
+                                            ToolTip="{DynamicResource tip.save_selected}"/>
+                                    <Button Content="{DynamicResource main.delete_selected}" Command="{Binding DeleteConfigItemCommand}"
                                             Style="{StaticResource DangerButton}"
-                                            ToolTip="从全局 .gitconfig 中移除选中项（会先二次确认）"/>
+                                            ToolTip="{DynamicResource tip.delete_selected}"/>
                                 </StackPanel>
-                                <TextBlock Text="完整配置" FontSize="16" FontWeight="Bold"
+                                <TextBlock Text="{DynamicResource main.full_config}" FontSize="16" FontWeight="Bold"
                                            VerticalAlignment="Center"/>
                             </DockPanel>
 
@@ -234,9 +240,21 @@
                                       Background="White"
                                       BorderBrush="#FFCCCCCC">
                                 <DataGrid.Columns>
-                                    <DataGridTextColumn Header="配置键" Binding="{Binding FullKey}" IsReadOnly="True" Width="260"/>
-                                    <DataGridTextColumn Header="值" Binding="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Width="*"/>
-                                    <DataGridTextColumn Header="作用域" Binding="{Binding Scope}" IsReadOnly="True" Width="80"/>
+                                    <DataGridTextColumn Binding="{Binding FullKey}" IsReadOnly="True" Width="260">
+                                        <DataGridTextColumn.Header>
+                                            <TextBlock Text="{DynamicResource col.config_key}"/>
+                                        </DataGridTextColumn.Header>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Binding="{Binding Value, UpdateSourceTrigger=PropertyChanged}" Width="*">
+                                        <DataGridTextColumn.Header>
+                                            <TextBlock Text="{DynamicResource col.value}"/>
+                                        </DataGridTextColumn.Header>
+                                    </DataGridTextColumn>
+                                    <DataGridTextColumn Binding="{Binding Scope}" IsReadOnly="True" Width="80">
+                                        <DataGridTextColumn.Header>
+                                            <TextBlock Text="{DynamicResource col.scope}"/>
+                                        </DataGridTextColumn.Header>
+                                    </DataGridTextColumn>
                                 </DataGrid.Columns>
                             </DataGrid>
                         </Grid>
@@ -253,13 +271,13 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Orientation="Horizontal" Margin="0,0,0,12">
-                        <Button Content="刷新账号状态" Command="{Binding RefreshGithubCommand}" Style="{StaticResource SecondaryButton}"/>
-                        <Button Content="登录新账号" Command="{Binding LoginGithubCommand}" Style="{StaticResource SuccessButton}"
-                                ToolTip="执行 gh auth login（浏览器授权），登录后账号会出现在左侧列表"/>
-                        <Button Content="切换选中" Command="{Binding SwitchGithubAccountCommand}" Style="{StaticResource SuccessButton}"
-                                ToolTip="也可以直接点列表里每一行的「切换」按钮"/>
-                        <Button Content="退出选中" Command="{Binding LogoutGithubAccountCommand}" Style="{StaticResource DangerButton}"
-                                ToolTip="执行 gh auth logout，仅删除本地凭据"/>
+                        <Button Content="{DynamicResource gh.refresh_status}" Command="{Binding RefreshGithubCommand}" Style="{StaticResource SecondaryButton}"/>
+                        <Button Content="{DynamicResource gh.login}" Command="{Binding LoginGithubCommand}" Style="{StaticResource SuccessButton}"
+                                ToolTip="{DynamicResource tip.gh_login}"/>
+                        <Button Content="{DynamicResource gh.switch_selected}" Command="{Binding SwitchGithubAccountCommand}" Style="{StaticResource SuccessButton}"
+                                ToolTip="{DynamicResource tip.gh_switch_selected}"/>
+                        <Button Content="{DynamicResource gh.logout_selected}" Command="{Binding LogoutGithubAccountCommand}" Style="{StaticResource DangerButton}"
+                                ToolTip="{DynamicResource tip.gh_logout}"/>
                     </StackPanel>
 
                     <Grid Grid.Row="1">
@@ -289,20 +307,20 @@
                                         </StackPanel>
                                         <StackPanel Grid.Column="1" Orientation="Horizontal" VerticalAlignment="Center">
                                             <!-- 生效账号显示状态标记 -->
-                                            <Button Content="切换" Style="{StaticResource SuccessButton}"
+                                            <Button Content="{DynamicResource common.switch}" Style="{StaticResource SuccessButton}"
                                                     Margin="6,0,0,0" MinWidth="56"
                                                     Command="{Binding DataContext.SwitchAccountCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                     CommandParameter="{Binding}"
                                                     Visibility="{Binding IsNotActive, Converter={StaticResource BoolToVis}}"
-                                                    ToolTip="立即把 gh 切换到该账号"/>
-                                            <TextBlock Text="✓ 使用中" VerticalAlignment="Center" Margin="6,0,0,0"
+                                                    ToolTip="{DynamicResource tip.gh_switch_row}"/>
+                                            <TextBlock Text="{DynamicResource gh.in_use}" VerticalAlignment="Center" Margin="6,0,0,0"
                                                        Foreground="#FF107C10" FontWeight="SemiBold" FontSize="12"
                                                        Visibility="{Binding IsActive, Converter={StaticResource BoolToVis}}"/>
-                                            <Button Content="退出" Style="{StaticResource DangerButton}"
+                                            <Button Content="{DynamicResource common.logout}" Style="{StaticResource DangerButton}"
                                                     Margin="6,0,0,0" MinWidth="56"
                                                     Command="{Binding DataContext.LogoutGithubAccountCommand, RelativeSource={RelativeSource AncestorType=ListBox}}"
                                                     CommandParameter="{Binding}"
-                                                    ToolTip="退出登录该账号（会先二次确认）"/>
+                                                    ToolTip="{DynamicResource tip.gh_logout_row}"/>
                                         </StackPanel>
                                     </Grid>
                                 </DataTemplate>
@@ -316,22 +334,22 @@
                                         BorderThickness="1" CornerRadius="4" Padding="10" Margin="0,0,0,10"
                                         Visibility="{Binding IsDeviceAuthVisible, Converter={StaticResource BoolToVis}}">
                                     <StackPanel>
-                                        <TextBlock FontWeight="Bold" Text="GitHub 设备授权" Margin="0,0,0,6"/>
+                                        <TextBlock FontWeight="Bold" Text="{DynamicResource gh.device_auth_title}" Margin="0,0,0,6"/>
                                         <StackPanel Orientation="Horizontal">
-                                            <TextBlock Text="设备码：" VerticalAlignment="Center"/>
+                                            <TextBlock Text="{DynamicResource gh.device_code}" VerticalAlignment="Center"/>
                                             <TextBox Text="{Binding DeviceCodeText, Mode=OneWay}" IsReadOnly="True"
                                                      FontFamily="Consolas" FontSize="16" FontWeight="Bold"
                                                      Width="130" Background="White" BorderBrush="#FFBFA32E"/>
-                                            <Button Content="复制设备码" Command="{Binding CopyDeviceCodeCommand}"
+                                            <Button Content="{DynamicResource gh.copy_device_code}" Command="{Binding CopyDeviceCodeCommand}"
                                                     Style="{StaticResource SecondaryButton}" Margin="8,0,0,0"/>
-                                            <Button Content="打开授权页面" Command="{Binding OpenGithubDevicePageCommand}"
+                                            <Button Content="{DynamicResource gh.open_auth_page}" Command="{Binding OpenGithubDevicePageCommand}"
                                                     Style="{StaticResource SuccessButton}" Margin="4,0,0,0"/>
-                                            <Button Content="取消登录" Command="{Binding CancelLoginCommand}"
+                                            <Button Content="{DynamicResource gh.cancel_login}" Command="{Binding CancelLoginCommand}"
                                                     Style="{StaticResource DangerButton}" Margin="4,0,0,0"
-                                                    ToolTip="终止本次登录等待（浏览器里的授权动作不会自动撤销）"/>
+                                                    ToolTip="{DynamicResource tip.gh_cancel_login}"/>
                                         </StackPanel>
                                         <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#FF7A5C00" Margin="0,8,0,0"
-                                                   Text="把设备码粘贴到 GitHub 授权页面并确认，完成后账号列表会自动刷新。设备码同时已复制到剪贴板，可直接 Ctrl+V 粘贴。"/>
+                                                   Text="{DynamicResource gh.device_auth_hint}"/>
                                     </StackPanel>
                                 </Border>
 
@@ -351,7 +369,7 @@
             </TabItem>
 
             <!-- 标签页3：全局密钥配置 -->
-            <TabItem Header="全局密钥配置">
+            <TabItem Header="{DynamicResource ssh.title}">
                 <Grid Margin="8">
                     <Grid.RowDefinitions>
                         <RowDefinition Height="Auto"/>
@@ -360,14 +378,14 @@
                     </Grid.RowDefinitions>
 
                     <StackPanel Grid.Row="0" Orientation="Horizontal" Margin="0,0,0,8">
-                        <Button Content="刷新" Command="{Binding RefreshSshCommand}"
+                        <Button Content="{DynamicResource common.refresh}" Command="{Binding RefreshSshCommand}"
                                 Click="FlashSshList_Click"
-                                ToolTip="重新读取 SSH 目录"/>
-                        <Button Content="打开 SSH 目录" Command="{Binding OpenSshFolderCommand}"
+                                ToolTip="{DynamicResource tip.ssh_refresh}"/>
+                        <Button Content="{DynamicResource ssh.open_folder}" Command="{Binding OpenSshFolderCommand}"
                                 Style="{StaticResource SecondaryButton}"
-                                ToolTip="在资源管理器中打开 %USERPROFILE%\.ssh"/>
-                        <Button Content="创建密钥对" Command="{Binding AddSshKeyCommand}"
-                                ToolTip="调用 ssh-keygen 在 SSH 目录下生成新的密钥对"/>
+                                ToolTip="{DynamicResource tip.ssh_open_folder}"/>
+                        <Button Content="{DynamicResource ssh.create_key}" Command="{Binding AddSshKeyCommand}"
+                                ToolTip="{DynamicResource tip.ssh_create_key}"/>
                     </StackPanel>
 
                     <!-- SSH 目录路径，左键打开、右键复制 -->
@@ -380,7 +398,7 @@
                         <TextBlock.ToolTip>
                             <TextBlock>
                                 <Run Text="{Binding SshFolderPath, Mode=OneWay}"/><LineBreak/>
-                                <Run Text="左键打开目录，右键复制路径" Foreground="#FF888888"/>
+                                <Run Text="{DynamicResource tip.path_link_dir}" Foreground="#FF888888"/>
                             </TextBlock>
                         </TextBlock.ToolTip>
                         <TextBlock.Style>
@@ -394,7 +412,7 @@
                                 </Style.Triggers>
                             </Style>
                         </TextBlock.Style>
-                        <Run Text="SSH 目录："/><Run Text="{Binding SshFolderPathDisplay, Mode=OneWay}"/>
+                        <Run Text="{DynamicResource ssh.folder_label}"/><Run Text="{Binding SshFolderPathDisplay, Mode=OneWay}"/>
                     </TextBlock>
 
                     <Border Grid.Row="2" Background="White" BorderBrush="#FFCCCCCC" BorderThickness="1" CornerRadius="4" Padding="4">
@@ -462,32 +480,32 @@
                                                 <StackPanel Grid.Column="1" Orientation="Horizontal"
                                                             VerticalAlignment="Center">
                                                     <!-- 只有白名单行才有：比对密钥对与白名单 -->
-                                                    <Button Content="识别密钥项目" VerticalAlignment="Center"
+                                                    <Button Content="{DynamicResource ssh.reconcile}" VerticalAlignment="Center"
                                                             Style="{StaticResource SecondaryButton}"
                                                             Command="{Binding DataContext.ReconcileWhitelistCommand,
                                                                       RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            ToolTip="检测哪些公钥还没加入白名单、哪些白名单条目已失效"
+                                                            ToolTip="{DynamicResource tip.ssh_reconcile}"
                                                             Visibility="{Binding CanReconcile, Converter={StaticResource BoolToVis}}"/>
 
-                                                    <Button Content="预览" VerticalAlignment="Center"
+                                                    <Button Content="{DynamicResource common.preview}" VerticalAlignment="Center"
                                                             Style="{StaticResource SecondaryButton}"
                                                             CommandParameter="{Binding}"
                                                             Command="{Binding DataContext.PreviewSshEntryCommand,
                                                                       RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            ToolTip="只读查看内容，不能修改"/>
+                                                            ToolTip="{DynamicResource tip.preview}"/>
 
-                                                    <Button Content="编辑" VerticalAlignment="Center"
+                                                    <Button Content="{DynamicResource common.edit}" VerticalAlignment="Center"
                                                             CommandParameter="{Binding}"
                                                             Command="{Binding DataContext.OpenSshEntryCommand,
                                                                       RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            ToolTip="打开独立窗口查看并修改内容"/>
+                                                            ToolTip="{DynamicResource tip.edit}"/>
 
-                                                    <Button Content="删除" VerticalAlignment="Center"
+                                                    <Button Content="{DynamicResource common.delete}" VerticalAlignment="Center"
                                                             Style="{StaticResource DangerButton}"
                                                             CommandParameter="{Binding}"
                                                             Command="{Binding DataContext.DeleteSshEntryCommand,
                                                                       RelativeSource={RelativeSource AncestorType=Window}}"
-                                                            ToolTip="把相关文件移到回收站（可恢复）"/>
+                                                            ToolTip="{DynamicResource tip.delete}"/>
                                                 </StackPanel>
                                             </Grid>
 
@@ -500,14 +518,14 @@
                                                 <StackPanel Grid.Column="0" VerticalAlignment="Center">
                                                     <TextBlock Text="{Binding Name}" FontWeight="SemiBold" FontSize="14"
                                                                Foreground="#FFAAAAAA"/>
-                                                    <TextBlock Text="签名白名单 · 尚未创建" FontSize="11"
+                                                    <TextBlock Text="{DynamicResource ssh.whitelist_missing}" FontSize="11"
                                                                Foreground="#FFAAAAAA" Margin="0,3,0,0"/>
                                                 </StackPanel>
                                                 <Button Grid.Column="1" VerticalAlignment="Center"
-                                                        Content="创建白名单文件"
+                                                        Content="{DynamicResource ssh.create_whitelist}"
                                                         Command="{Binding DataContext.CreateWhitelistFileCommand,
                                                                   RelativeSource={RelativeSource AncestorType=Window}}"
-                                                        ToolTip="在 SSH 目录下新建空的 allowed_signers"/>
+                                                        ToolTip="{DynamicResource tip.create_whitelist}"/>
                                             </Grid>
                                         </Grid>
                                         <DataTemplate.Triggers>
@@ -530,7 +548,7 @@
             </TabItem>
 
             <!-- 标签页：关于 -->
-            <TabItem Header="关于">
+            <TabItem Header="{DynamicResource tab.about}">
                 <ScrollViewer VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Disabled">
                     <StackPanel Margin="24">
                         <TextBlock Text="{Binding AppName}" FontSize="24" FontWeight="Bold"/>
@@ -538,7 +556,7 @@
 
                         <!-- 创作者：默认深灰，悬停变蓝并可点 -->
                         <TextBlock Margin="0,0,0,6">
-                            <Run Text="创作者：" Foreground="#FF444444"/>
+                            <Run Text="{DynamicResource about.author}" Foreground="#FF444444"/>
                             <Hyperlink Click="OpenCreatorUrl_Click" TextDecorations="None"
                                        ToolTip="https://github.com/NeetheCheeBao">
                                 <Run Text="NeetheCheeBao"/>
@@ -558,7 +576,7 @@
 
                         <!-- 项目地址 -->
                         <TextBlock Margin="0,0,0,20">
-                            <Run Text="项目地址：" Foreground="#FF444444"/>
+                            <Run Text="{DynamicResource about.project}" Foreground="#FF444444"/>
                             <Hyperlink Click="OpenProjectUrl_Click"
                                        Foreground="#FF0078D4" TextDecorations="None"
                                        ToolTip="https://github.com/NeetheCheeBao/GitConfigTool">
@@ -577,10 +595,10 @@
 
                         <!-- 本机信息：只读文本框，可整段复制，也可自由划选 -->
                         <DockPanel Margin="0,0,0,8">
-                            <Button DockPanel.Dock="Right" Content="复制" Padding="12,3" FontSize="12"
+                            <Button DockPanel.Dock="Right" Content="{DynamicResource common.copy}" Padding="12,3" FontSize="12"
                                     Command="{Binding CopyEnvironmentCommand}"
-                                    ToolTip="把下面这些信息整段复制到剪贴板"/>
-                            <TextBlock Text="本机信息" FontWeight="SemiBold" VerticalAlignment="Center"/>
+                                    ToolTip="{DynamicResource tip.copy_env}"/>
+                            <TextBlock Text="{DynamicResource about.local_info}" FontWeight="SemiBold" VerticalAlignment="Center"/>
                         </DockPanel>
 
                         <Border Background="White" BorderBrush="#FFCCCCCC" BorderThickness="1"
@@ -594,9 +612,9 @@
                                      HorizontalScrollBarVisibility="Disabled"/>
                         </Border>
 
-                        <Button Content="检查软件更新" HorizontalAlignment="Left"
+                        <Button Content="{DynamicResource about.check_update}" HorizontalAlignment="Left"
                                 Click="CheckUpdate_Click"
-                                ToolTip="在浏览器中打开 GitHub Releases 页面"/>
+                                ToolTip="{DynamicResource tip.check_update}"/>
                     </StackPanel>
                 </ScrollViewer>
             </TabItem>
@@ -621,13 +639,6 @@
                     <Run Text="gh: "/><Run Text="{Binding GhVersion, Mode=OneWay}"/>
                 </TextBlock>
             </Grid>
-        </Border>
-
-        <!-- 忙碌遮罩 -->
-        <Border Grid.RowSpan="3" Background="#80000000" Visibility="{Binding IsBusy, Converter={StaticResource BoolToVis}}">
-            <StackPanel VerticalAlignment="Center" HorizontalAlignment="Center">
-                <TextBlock Text="处理中..." FontSize="18" Foreground="White" HorizontalAlignment="Center"/>
-            </StackPanel>
         </Border>
     </Grid>
 </Window>

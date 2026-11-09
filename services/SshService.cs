@@ -176,11 +176,11 @@ namespace GitConfigTool.Services
         public (bool Success, string Message) CreateKeyPair(SshKeyRequest request)
         {
             if (request == null || string.IsNullOrWhiteSpace(request.KeyName))
-                return (false, "密钥名不能为空");
+                return (false, Helpers.Localization.T("rt.055"));
 
             var sshKeygen = ExecutableLocator.LocateGitTool("ssh-keygen.exe");
             if (string.IsNullOrEmpty(sshKeygen))
-                return (false, "未找到 ssh-keygen，请确认已安装 Git for Windows。");
+                return (false, Helpers.Localization.T("rt.056"));
 
             if (!Directory.Exists(SshFolderPath))
             {
@@ -190,13 +190,13 @@ namespace GitConfigTool.Services
                 }
                 catch (Exception ex)
                 {
-                    return (false, "无法创建 SSH 目录：" + ex.Message);
+                    return (false, Helpers.Localization.T("rt.057") + ex.Message);
                 }
             }
 
             var privatePath = Path.Combine(SshFolderPath, request.KeyName);
             if (File.Exists(privatePath) || File.Exists(privatePath + ".pub"))
-                return (false, "同名文件已存在，请换一个密钥名：" + request.KeyName);
+                return (false, Helpers.Localization.T("rt.058") + request.KeyName);
 
             var arguments = "-t " + request.KeyType +
                             " -C \"" + request.Comment + "\"" +
@@ -213,19 +213,19 @@ namespace GitConfigTool.Services
             if (result.ExitCode != 0)
             {
                 var detail = string.IsNullOrWhiteSpace(result.StdErr) ? result.StdOut : result.StdErr;
-                return (false, "ssh-keygen 执行失败：" +
-                    (string.IsNullOrWhiteSpace(detail) ? "退出码 " + result.ExitCode : detail.Trim()));
+                return (false, Helpers.Localization.T("rt.059") +
+                    (string.IsNullOrWhiteSpace(detail) ? Helpers.Localization.T("rt.060") + result.ExitCode : detail.Trim()));
             }
 
             if (!File.Exists(privatePath))
-                return (false, "ssh-keygen 已执行，但没有找到生成的私钥文件");
+                return (false, Helpers.Localization.T("rt.061"));
 
-            var message = "已创建密钥对 " + request.KeyName;
+            var message = Helpers.Localization.T("rt.062") + request.KeyName;
 
             if (request.AddToAllowedSigners && !string.IsNullOrWhiteSpace(request.Comment))
             {
                 var added = AppendAllowedSigner(request.Comment.Trim(), privatePath + ".pub");
-                message += added.Ok ? "，" + added.Message : "；白名单未写入：" + added.Message;
+                message += added.Ok ? "，" + added.Message : Helpers.Localization.T("rt.063") + added.Message;
             }
 
             return (true, message);
@@ -238,12 +238,12 @@ namespace GitConfigTool.Services
         {
             try
             {
-                if (!File.Exists(publicKeyPath)) return (false, "找不到公钥文件");
+                if (!File.Exists(publicKeyPath)) return (false, Helpers.Localization.T("rt.064"));
 
                 var parts = File.ReadAllText(publicKeyPath)
                     .Trim()
                     .Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-                if (parts.Length < 2) return (false, "公钥内容无法解析");
+                if (parts.Length < 2) return (false, Helpers.Localization.T("rt.065"));
 
                 var line = principal + " " + parts[0] + " " + parts[1];
                 var path = Path.Combine(SshFolderPath, AllowedSignersFileName);
@@ -252,14 +252,14 @@ namespace GitConfigTool.Services
 
                 foreach (var item in normalized.Split('\n'))
                 {
-                    if (item.Trim() == line) return (true, "白名单里已有该条目，未重复写入");
+                    if (item.Trim() == line) return (true, Helpers.Localization.T("rt.066"));
                 }
 
                 if (normalized.Length > 0 && !normalized.EndsWith("\n", StringComparison.Ordinal))
                     normalized += "\n";
 
                 File.WriteAllText(path, normalized + line + "\n", new UTF8Encoding(false));
-                return (true, "已加入白名单");
+                return (true, Helpers.Localization.T("rt.067"));
             }
             catch (Exception ex)
             {
@@ -344,8 +344,8 @@ namespace GitConfigTool.Services
                     IsSelected = hasPrincipal,
                     Title = key.Name,
                     Detail = hasPrincipal
-                        ? "标识 " + key.Comment + " · 公钥不在白名单里"
-                        : "公钥没有注释，无法确定标识，需要手动处理",
+                        ? Helpers.Localization.T("rt.068") + key.Comment + Helpers.Localization.T("rt.069")
+                        : Helpers.Localization.T("rt.070"),
                     Principal = key.Comment,
                     Algorithm = key.Algo,
                     PublicKeyBlob = key.Blob
@@ -364,8 +364,8 @@ namespace GitConfigTool.Services
                     CanApply = true,
                     IsSelected = isOwn,
                     Title = line.Principal,
-                    Detail = "本机找不到对应的密钥对",
-                    Note = isOwn ? null : "标识不是本机邮箱，可能是同事的公钥，删除前请确认",
+                    Detail = Helpers.Localization.T("rt.071"),
+                    Note = isOwn ? null : Helpers.Localization.T("rt.072"),
                     RawLine = line.Raw
                 });
             }
@@ -381,10 +381,10 @@ namespace GitConfigTool.Services
             var selected = (items ?? new List<WhitelistReconcileItem>())
                 .Where(i => i.IsSelected && i.CanApply)
                 .ToList();
-            if (selected.Count == 0) return (false, "没有勾选任何修改");
+            if (selected.Count == 0) return (false, Helpers.Localization.T("rt.073"));
 
             var path = AllowedSignersPath;
-            if (!File.Exists(path)) return (false, "白名单文件不存在");
+            if (!File.Exists(path)) return (false, Helpers.Localization.T("rt.074"));
 
             try
             {
@@ -415,11 +415,11 @@ namespace GitConfigTool.Services
                 var removed = lines.Count - kept.Count - added;
                 File.WriteAllText(path, string.Join("\n", kept) + "\n", new UTF8Encoding(false));
 
-                return (true, "已更新白名单：新增 " + added + " 条，删除 " + removed + " 条");
+                return (true, Helpers.Localization.T("rt.075") + added + Helpers.Localization.T("rt.076") + removed + Helpers.Localization.T("rt.077"));
             }
             catch (Exception ex)
             {
-                return (false, "写入失败：" + ex.Message);
+                return (false, Helpers.Localization.T("rt.078") + ex.Message);
             }
         }
 
@@ -492,17 +492,17 @@ namespace GitConfigTool.Services
 
             try
             {
-                if (File.Exists(path)) return (false, "白名单文件已存在");
+                if (File.Exists(path)) return (false, Helpers.Localization.T("rt.079"));
                 if (!Directory.Exists(SshFolderPath)) Directory.CreateDirectory(SshFolderPath);
 
                 File.WriteAllText(path, string.Empty, new UTF8Encoding(false));
             }
             catch (Exception ex)
             {
-                return (false, "创建失败：" + ex.Message);
+                return (false, Helpers.Localization.T("rt.080") + ex.Message);
             }
 
-            return (true, "已创建白名单文件 " + AllowedSignersFileName);
+            return (true, Helpers.Localization.T("rt.081") + AllowedSignersFileName);
         }
 
         /// <summary>
@@ -532,10 +532,10 @@ namespace GitConfigTool.Services
         /// </summary>
         public (bool Ok, string Message) SaveWhitelistContent(SshWhitelistContent content)
         {
-            if (content == null) return (false, "没有可保存的内容");
+            if (content == null) return (false, Helpers.Localization.T("rt.082"));
 
             var check = SshKeyValidator.ValidateAllowedSigners(content.Text);
-            if (!check.Ok) return (false, "白名单未保存：" + check.Message);
+            if (!check.Ok) return (false, Helpers.Localization.T("rt.083") + check.Message);
 
             try
             {
@@ -543,10 +543,10 @@ namespace GitConfigTool.Services
             }
             catch (Exception ex)
             {
-                return (false, "写入失败：" + ex.Message);
+                return (false, Helpers.Localization.T("rt.078") + ex.Message);
             }
 
-            return (true, "已保存白名单");
+            return (true, Helpers.Localization.T("rt.084"));
         }
 
         /// <summary>
@@ -554,20 +554,20 @@ namespace GitConfigTool.Services
         /// </summary>
         public (bool Ok, string Message) SaveKeyPairContent(SshKeyPairContent content)
         {
-            if (content == null) return (false, "没有可保存的内容");
+            if (content == null) return (false, Helpers.Localization.T("rt.082"));
             if (!content.HasPrivateFile && !content.HasPublicFile)
-                return (false, "没有找到可写入的文件");
+                return (false, Helpers.Localization.T("rt.085"));
 
             if (content.HasPrivateFile)
             {
                 var check = SshKeyValidator.ValidatePrivateKey(content.PrivateText);
-                if (!check.Ok) return (false, "私钥未保存：" + check.Message);
+                if (!check.Ok) return (false, Helpers.Localization.T("rt.086") + check.Message);
             }
 
             if (content.HasPublicFile)
             {
                 var check = SshKeyValidator.ValidatePublicKey(content.PublicText);
-                if (!check.Ok) return (false, "公钥未保存：" + check.Message);
+                if (!check.Ok) return (false, Helpers.Localization.T("rt.087") + check.Message);
             }
 
             try
@@ -577,10 +577,10 @@ namespace GitConfigTool.Services
             }
             catch (Exception ex)
             {
-                return (false, "写入失败：" + ex.Message);
+                return (false, Helpers.Localization.T("rt.078") + ex.Message);
             }
 
-            return (true, "已保存密钥「" + content.Name + "」");
+            return (true, Helpers.Localization.T("rt.088") + content.Name + "」");
         }
 
         /// <summary>
@@ -646,9 +646,9 @@ namespace GitConfigTool.Services
         {
             var name = file.Name;
 
-            if (name.Equals("config", StringComparison.OrdinalIgnoreCase)) return "配置";
-            if (name.StartsWith("known_hosts", StringComparison.OrdinalIgnoreCase)) return "已知主机";
-            if (name.Equals("authorized_keys", StringComparison.OrdinalIgnoreCase)) return "授权公钥";
+            if (name.Equals("config", StringComparison.OrdinalIgnoreCase)) return Helpers.Localization.T("rt.089");
+            if (name.StartsWith("known_hosts", StringComparison.OrdinalIgnoreCase)) return Helpers.Localization.T("rt.090");
+            if (name.Equals("authorized_keys", StringComparison.OrdinalIgnoreCase)) return Helpers.Localization.T("rt.091");
             if (name.Equals(AllowedSignersFileName, StringComparison.OrdinalIgnoreCase)) return KindAllowedSigners;
             if (name.EndsWith(".pub", StringComparison.OrdinalIgnoreCase)) return KindPublic;
 
@@ -656,7 +656,7 @@ namespace GitConfigTool.Services
             if (firstLine.IndexOf("PRIVATE KEY", StringComparison.OrdinalIgnoreCase) >= 0) return KindPrivate;
             if (IsPublicKeyLine(firstLine)) return KindPublic;
 
-            return "其他";
+            return Helpers.Localization.T("rt.092");
         }
 
         /// <summary>读取文件第一行；失败时返回空串</summary>

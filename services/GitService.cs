@@ -25,7 +25,7 @@ namespace GitConfigTool.Services
         {
             _gitPath = FindGitExecutable();
             if (string.IsNullOrEmpty(_gitPath))
-                DiscoveryError = ExecutableLocator.LastWarning ?? "未找到 git，请确认已安装 Git for Windows。";
+                DiscoveryError = ExecutableLocator.LastWarning ?? Helpers.Localization.T("rt.043");
         }
 
         /// <summary>
@@ -45,7 +45,7 @@ namespace GitConfigTool.Services
             return Task.Run(() =>
             {
                 if (string.IsNullOrEmpty(_gitPath))
-                    return (-1, string.Empty, DiscoveryError ?? "未找到 git 可执行文件");
+                    return (-1, string.Empty, DiscoveryError ?? Helpers.Localization.T("rt.044"));
 
                 return ExecutableLocator.Run(_gitPath, arguments, workingDirectory, 60000);
             });
@@ -60,12 +60,12 @@ namespace GitConfigTool.Services
         public async Task<(bool Ok, string Version)> CheckGitAvailableAsync()
         {
             if (string.IsNullOrEmpty(_gitPath))
-                return (false, DiscoveryError ?? "未找到 git 可执行文件");
+                return (false, DiscoveryError ?? Helpers.Localization.T("rt.044"));
 
             var result = await RunGitAsync("--version");
             if (result.ExitCode == 0)
                 return (true, result.StdOut);
-            return (false, result.StdErr.Length > 0 ? result.StdErr : "git 无法执行");
+            return (false, result.StdErr.Length > 0 ? result.StdErr : Helpers.Localization.T("rt.045"));
         }
 
         /// <summary>
@@ -86,7 +86,7 @@ namespace GitConfigTool.Services
             string scopeArg = scope == "system" ? "--system" : scope == "local" ? "--local" : "--global";
             var result = await RunGitAsync($"config {scopeArg} --replace-all {key} \"{value}\"");
             if (result.ExitCode == 0)
-                return (true, "设置成功");
+                return (true, Helpers.Localization.T("rt.046"));
             return (false, result.StdErr);
         }
 
@@ -98,7 +98,7 @@ namespace GitConfigTool.Services
             string scopeArg = scope == "system" ? "--system" : scope == "local" ? "--local" : "--global";
             var result = await RunGitAsync($"config {scopeArg} --unset-all {key}");
             if (result.ExitCode == 0 || result.ExitCode == 5)
-                return (true, "已删除");
+                return (true, Helpers.Localization.T("rt.047"));
             return (false, result.StdErr);
         }
 
@@ -164,7 +164,7 @@ namespace GitConfigTool.Services
         public async Task<(bool Success, string Message)> ApplyProfileAsync(GitProfile profile)
         {
             if (string.IsNullOrWhiteSpace(profile.UserName) || string.IsNullOrWhiteSpace(profile.Email))
-                return (false, "用户名和邮箱不能为空");
+                return (false, Helpers.Localization.T("rt.048"));
 
             var results = new List<string>();
 
@@ -211,7 +211,7 @@ namespace GitConfigTool.Services
                 results.Add("http.sslBackend");
             }
 
-            return (true, $"已应用档案「{profile.UserName}」，更新项：" + string.Join(", ", results));
+            return (true, Helpers.Localization.T("rt.049", profile.UserName) + string.Join(", ", results));
         }
 
 

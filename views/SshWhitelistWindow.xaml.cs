@@ -24,14 +24,14 @@ namespace GitConfigTool.Views
             ReadOnly = readOnly;
             DataContext = Whitelist;
 
-            Title = readOnly ? "白名单预览" : "白名单内容";
-            TitleText.Text = readOnly ? "白名单内容（只读）" : "白名单内容";
+            Title = readOnly ? Helpers.Localization.T("rt.204") : Helpers.Localization.T("rt.205");
+            TitleText.Text = readOnly ? Helpers.Localization.T("rt.206") : Helpers.Localization.T("rt.205");
             ContentBox.IsReadOnly = readOnly;
 
             if (readOnly)
             {
                 SaveButton.Visibility = Visibility.Collapsed;
-                CancelButton.Content = "关闭";
+                CancelButton.Content = Helpers.Localization.T("rt.201");
             }
         }
 
@@ -54,7 +54,7 @@ namespace GitConfigTool.Views
             var check = SshKeyValidator.ValidateAllowedSigners(Whitelist.Text);
             if (!check.Ok)
             {
-                MessageBox.Show("白名单内容有误：" + check.Message, "内容校验未通过",
+                MessageBox.Show(Helpers.Localization.T("msg.whitelist_invalid") + check.Message, Helpers.Localization.T("msg.validation_failed"),
                     MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }

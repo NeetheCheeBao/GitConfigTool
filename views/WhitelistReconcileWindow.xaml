@@ -1,7 +1,7 @@
 <Window x:Class="GitConfigTool.Views.WhitelistReconcileWindow"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="识别密钥项目"
+        Title="{DynamicResource ssh.reconcile}"
         Height="580" Width="760"
         MinHeight="380" MinWidth="560"
         WindowStartupLocation="CenterOwner"
@@ -44,20 +44,20 @@
             <RowDefinition Height="Auto"/>
         </Grid.RowDefinitions>
 
-        <TextBlock Grid.Row="0" Text="识别密钥项目" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
+        <TextBlock Grid.Row="0" Text="{DynamicResource ssh.reconcile}" FontSize="16" FontWeight="Bold" Margin="0,0,0,12"/>
 
         <ScrollViewer Grid.Row="1" VerticalScrollBarVisibility="Auto"
                       HorizontalScrollBarVisibility="Disabled">
             <StackPanel>
 
                 <!-- 没有任何问题 -->
-                <TextBlock Text="密钥对与白名单已经完全对应，没有需要处理的项。"
+                <TextBlock Text="{DynamicResource reconcile.empty}"
                            FontSize="13" Foreground="#FF5F5E5A" TextWrapping="Wrap"
                            Visibility="{Binding IsEmpty, Converter={StaticResource BoolToVis}}"/>
 
                 <!-- ① 公钥未加入白名单 -->
                 <StackPanel Visibility="{Binding HasMissing, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="建议加入白名单" FontWeight="SemiBold" Margin="0,0,0,6"/>
+                    <TextBlock Text="{DynamicResource reconcile.add}" FontWeight="SemiBold" Margin="0,0,0,6"/>
                     <ItemsControl ItemsSource="{Binding Missing}"
                                   ItemTemplate="{StaticResource ReconcileItem}"/>
                     <TextBlock Margin="0,2,0,16"/>
@@ -65,9 +65,9 @@
 
                 <!-- ② 白名单里本机找不到密钥 -->
                 <StackPanel Visibility="{Binding HasStale, Converter={StaticResource BoolToVis}}">
-                    <TextBlock Text="白名单里本机找不到对应密钥" FontWeight="SemiBold" Margin="0,0,0,4"/>
+                    <TextBlock Text="{DynamicResource reconcile.stale}" FontWeight="SemiBold" Margin="0,0,0,4"/>
                     <TextBlock TextWrapping="Wrap" FontSize="11" Foreground="#FF888888" Margin="0,0,0,8"
-                               Text="白名单里通常也会放同事的公钥，那些在本机找不到密钥属于正常情况，勾选删除要谨慎。"/>
+                               Text="{DynamicResource reconcile.stale_hint}"/>
                     <ItemsControl ItemsSource="{Binding Stale}"
                                   ItemTemplate="{StaticResource ReconcileItem}"/>
                 </StackPanel>
@@ -75,8 +75,8 @@
         </ScrollViewer>
 
         <StackPanel Grid.Row="2" Orientation="Horizontal" HorizontalAlignment="Right" Margin="0,14,0,0">
-            <Button Content="取消" Width="80" Click="Cancel_Click" Style="{StaticResource SecondaryButton}"/>
-            <Button Content="应用勾选的修改" Width="140" Click="Apply_Click" Style="{StaticResource SuccessButton}"/>
+            <Button Content="{DynamicResource common.cancel}" Width="80" Click="Cancel_Click" Style="{StaticResource SecondaryButton}"/>
+            <Button Content="{DynamicResource reconcile.apply}" Width="140" Click="Apply_Click" Style="{StaticResource SuccessButton}"/>
         </StackPanel>
     </Grid>
 </Window>

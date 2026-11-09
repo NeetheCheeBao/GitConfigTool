@@ -49,9 +49,9 @@ namespace GitConfigTool.Models
 
         /// <summary>列表右侧标记：密钥对 / 仅私钥 / 仅公钥 / 白名单</summary>
         public string BadgeText =>
-            IsWhitelist ? "白名单" :
-            HasPrivateKey && HasPublicKey ? "密钥对" :
-            HasPrivateKey ? "仅私钥" : "仅公钥";
+            IsWhitelist ? Helpers.Localization.T("rt.028") :
+            HasPrivateKey && HasPublicKey ? Helpers.Localization.T("rt.029") :
+            HasPrivateKey ? Helpers.Localization.T("rt.030") : Helpers.Localization.T("rt.031");
 
         /// <summary>列表第二行：算法 · 私钥大小 · 公钥大小 · 修改时间</summary>
         public string SummaryText
@@ -61,14 +61,14 @@ namespace GitConfigTool.Models
                 var parts = new List<string>();
                 if (IsWhitelist)
                 {
-                    parts.Add("签名白名单");
-                    parts.Add(EntryCount + " 条记录");
+                    parts.Add(Helpers.Localization.T("rt.032"));
+                    parts.Add(EntryCount + Helpers.Localization.T("rt.033"));
                 }
                 else
                 {
                     if (!string.IsNullOrEmpty(Algorithm)) parts.Add(Algorithm);
-                    if (HasPrivateKey) parts.Add("私钥 " + SizeText(PrivateKeySize));
-                    if (HasPublicKey) parts.Add("公钥 " + SizeText(PublicKeySize));
+                    if (HasPrivateKey) parts.Add(Helpers.Localization.T("rt.034") + SizeText(PrivateKeySize));
+                    if (HasPublicKey) parts.Add(Helpers.Localization.T("rt.035") + SizeText(PublicKeySize));
                 }
                 parts.Add(ModifiedAt.ToString("yyyy-MM-dd HH:mm"));
                 return string.Join(" · ", parts);

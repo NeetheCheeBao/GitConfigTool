@@ -25,7 +25,7 @@ namespace GitConfigTool.Helpers
         /// </summary>
         public static (bool Ok, string Message) ValidatePrivateKey(string text)
         {
-            if (string.IsNullOrWhiteSpace(text)) return (false, "内容为空");
+            if (string.IsNullOrWhiteSpace(text)) return (false, Localization.T("rt.007"));
 
             var lines = SplitLines(text);
             string label = null;
@@ -49,14 +49,14 @@ namespace GitConfigTool.Helpers
                 }
             }
 
-            if (label == null) return (false, "找不到 -----BEGIN ...----- 起始行");
-            if (end < 0) return (false, "找不到与起始行配对的 -----END ...----- 结束行");
+            if (label == null) return (false, Localization.T("rt.008"));
+            if (end < 0) return (false, Localization.T("rt.009"));
             if (label.IndexOf("PRIVATE KEY", StringComparison.Ordinal) < 0)
-                return (false, "这不是私钥块：" + label);
+                return (false, Localization.T("rt.010") + label);
 
             var body = new StringBuilder();
             for (int i = begin + 1; i < end; i++) body.Append(lines[i].Trim());
-            if (body.Length == 0) return (false, "私钥块正文为空");
+            if (body.Length == 0) return (false, Localization.T("rt.011"));
 
             byte[] raw;
             try
@@ -65,13 +65,13 @@ namespace GitConfigTool.Helpers
             }
             catch (FormatException)
             {
-                return (false, "私钥块正文不是合法的 base64");
+                return (false, Localization.T("rt.012"));
             }
 
-            if (raw.Length == 0) return (false, "私钥块解码后为空");
+            if (raw.Length == 0) return (false, Localization.T("rt.013"));
 
             if (label == "OPENSSH PRIVATE KEY" && !StartsWith(raw, OpenSshMagic))
-                return (false, "OpenSSH 私钥块缺少 openssh-key-v1 标识，内容可能已损坏");
+                return (false, Localization.T("rt.014"));
 
             return (true, null);
         }
@@ -82,18 +82,18 @@ namespace GitConfigTool.Helpers
         /// </summary>
         public static (bool Ok, string Message) ValidatePublicKey(string text)
         {
-            if (string.IsNullOrWhiteSpace(text)) return (false, "内容为空");
+            if (string.IsNullOrWhiteSpace(text)) return (false, Localization.T("rt.007"));
 
             var trimmed = text.Trim();
             if (trimmed.IndexOf('\n') >= 0 || trimmed.IndexOf('\r') >= 0)
-                return (false, "公钥应当只有一行");
+                return (false, Localization.T("rt.015"));
 
             var parts = trimmed.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
-            if (parts.Length < 2) return (false, "公钥至少需要「算法 公钥」两段");
+            if (parts.Length < 2) return (false, Localization.T("rt.016"));
 
             var algorithm = parts[0];
             if (Array.IndexOf(Algorithms, algorithm) < 0)
-                return (false, "无法识别的算法名：" + algorithm);
+                return (false, Localization.T("rt.017") + algorithm);
 
             byte[] raw;
             try
@@ -102,19 +102,19 @@ namespace GitConfigTool.Helpers
             }
             catch (FormatException)
             {
-                return (false, "公钥不是合法的 base64");
+                return (false, Localization.T("rt.018"));
             }
 
             // SSH 线格式：4 字节长度 + 算法名，之后才是密钥本体
-            if (raw.Length < 4) return (false, "公钥内容过短");
+            if (raw.Length < 4) return (false, Localization.T("rt.019"));
 
             int nameLength = (raw[0] << 24) | (raw[1] << 16) | (raw[2] << 8) | raw[3];
             if (nameLength <= 0 || nameLength + 4 > raw.Length)
-                return (false, "公钥的长度字段不合法");
+                return (false, Localization.T("rt.020"));
 
             var name = Encoding.ASCII.GetString(raw, 4, nameLength);
             if (name != algorithm)
-                return (false, "公钥内部的算法名（" + name + "）与首段（" + algorithm + "）不一致");
+                return (false, Localization.T("rt.021") + name + Localization.T("rt.022") + algorithm + Localization.T("rt.023"));
 
             return (true, null);
         }
@@ -125,7 +125,7 @@ namespace GitConfigTool.Helpers
         /// </summary>
         public static (bool Ok, string Message) ValidateAllowedSigners(string text)
         {
-            if (string.IsNullOrWhiteSpace(text)) return (false, "内容为空");
+            if (string.IsNullOrWhiteSpace(text)) return (false, Localization.T("rt.007"));
 
             var lines = text.Replace("\r\n", "\n").Replace('\r', '\n').Split('\n');
 
@@ -137,11 +137,11 @@ namespace GitConfigTool.Helpers
 
                 var parts = line.Split(new[] { ' ', '\t' }, StringSplitOptions.RemoveEmptyEntries);
                 if (parts.Length < 3)
-                    return (false, "第 " + (i + 1) + " 行少于三段（标识 算法 公钥）");
+                    return (false, Localization.T("rt.024") + (i + 1) + Localization.T("rt.025"));
 
                 var check = ValidatePublicKey(parts[parts.Length - 2] + " " + parts[parts.Length - 1]);
                 if (!check.Ok)
-                    return (false, "第 " + (i + 1) + " 行" + check.Message);
+                    return (false, Localization.T("rt.024") + (i + 1) + Localization.T("rt.026") + check.Message);
             }
 
             return (true, null);

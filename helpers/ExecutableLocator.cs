@@ -46,8 +46,8 @@ namespace GitConfigTool.Helpers
                 if (IsValid(path)) return path;
             }
 
-            LastWarning = "未在注册表、where.exe 及 PATH 中找到 " + exeName +
-                          "。若已安装，请确认安装时勾选了“加入 PATH”。";
+            LastWarning = Localization.T("rt.002") + exeName +
+                          Localization.T("rt.003");
             return null;
         }
 
@@ -142,7 +142,7 @@ namespace GitConfigTool.Helpers
                 if (out2.Length == 0 && err2.Length == 0) continue;
                 if (err2.IndexOf("not recognized", StringComparison.OrdinalIgnoreCase) >= 0) continue;
 
-                version = "可用（" + Path.GetFileName(exePath) + "）";
+                version = Localization.T("rt.004") + Path.GetFileName(exePath) + "）";
                 return true;
             }
 
@@ -174,7 +174,7 @@ namespace GitConfigTool.Helpers
                 using (var proc = Process.Start(psi))
                 {
                     if (proc == null)
-                        return (-1, string.Empty, "无法启动进程: " + fileName);
+                        return (-1, string.Empty, Localization.T("rt.005") + fileName);
 
                     var stdoutTask = proc.StandardOutput.ReadToEndAsync();
                     var stderrTask = proc.StandardError.ReadToEndAsync();
@@ -182,7 +182,7 @@ namespace GitConfigTool.Helpers
                     if (!proc.WaitForExit(timeoutMs))
                     {
                         try { proc.Kill(); } catch { }
-                        return (-1, string.Empty, "执行超时: " + fileName);
+                        return (-1, string.Empty, Localization.T("rt.006") + fileName);
                     }
 
                     // 进程已退出，输出流已读完

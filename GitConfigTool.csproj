@@ -52,4 +52,8 @@
     <Resource Include="assets\icon.ico" />
   </ItemGroup>
 
+  <ItemGroup>
+    <EmbeddedResource Include="langs\**\*.json" />
+  </ItemGroup>
+
 </Project>

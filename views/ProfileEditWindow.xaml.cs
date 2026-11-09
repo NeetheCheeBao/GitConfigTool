@@ -22,7 +22,7 @@ namespace GitConfigTool.Views
             if (string.IsNullOrWhiteSpace(Profile.UserName) ||
                 string.IsNullOrWhiteSpace(Profile.Email))
             {
-                MessageBox.Show("Git user.name 和 user.email 不能为空", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(Helpers.Localization.T("msg.name_email_required"), Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
             DialogResult = true;

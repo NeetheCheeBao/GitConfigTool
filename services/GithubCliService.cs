@@ -27,7 +27,7 @@ namespace GitConfigTool.Services
         {
             _ghPath = FindGhExecutable();
             if (string.IsNullOrEmpty(_ghPath))
-                DiscoveryError = ExecutableLocator.LastWarning ?? "未找到 GitHub CLI (gh)，请先安装。";
+                DiscoveryError = ExecutableLocator.LastWarning ?? Helpers.Localization.T("rt.036");
         }
 
         /// <summary>
@@ -44,7 +44,7 @@ namespace GitConfigTool.Services
             return Task.Run(() =>
             {
                 if (string.IsNullOrEmpty(_ghPath))
-                    return (-1, string.Empty, DiscoveryError ?? "未找到 gh 可执行文件");
+                    return (-1, string.Empty, DiscoveryError ?? Helpers.Localization.T("rt.037"));
 
                 return ExecutableLocator.Run(_ghPath, arguments, null, 60000);
             });
@@ -53,7 +53,7 @@ namespace GitConfigTool.Services
         public async Task<(bool Ok, string Version)> CheckAvailableAsync()
         {
             if (string.IsNullOrEmpty(_ghPath))
-                return (false, DiscoveryError ?? "未找到 gh 可执行文件");
+                return (false, DiscoveryError ?? Helpers.Localization.T("rt.037"));
 
             var result = await RunGhAsync("--version");
             if (result.ExitCode == 0)
@@ -61,7 +61,7 @@ namespace GitConfigTool.Services
                 var lines = result.StdOut.Split(new[] { '\r', '\n' }, StringSplitOptions.RemoveEmptyEntries);
                 return (true, lines.Length > 0 ? lines[0] : result.StdOut);
             }
-            return (false, result.StdErr.Length > 0 ? result.StdErr : "gh 无法执行");
+            return (false, result.StdErr.Length > 0 ? result.StdErr : Helpers.Localization.T("rt.038"));
         }
 
         public async Task<List<GithubAccount>> GetLoggedInAccountsAsync()
@@ -189,7 +189,7 @@ namespace GitConfigTool.Services
         {
             var result = await RunGhAsync($"auth switch --user \"{username}\" --hostname \"{host}\"");
             if (result.ExitCode == 0)
-                return (true, result.StdOut.Length > 0 ? result.StdOut : $"已切换到 {username}@{host}");
+                return (true, result.StdOut.Length > 0 ? result.StdOut : Helpers.Localization.T("rt.039", username, host));
             return (false, result.StdErr.Length > 0 ? result.StdErr : result.StdOut);
         }
 
@@ -212,7 +212,7 @@ namespace GitConfigTool.Services
         public (bool Success, string Message, Process Process) StartLoginWithClipboard(string host = "github.com", string protocol = "https")
         {
             if (string.IsNullOrEmpty(_ghPath))
-                return (false, DiscoveryError ?? "未找到 gh 可执行文件", null);
+                return (false, DiscoveryError ?? Helpers.Localization.T("rt.037"), null);
 
             _loginStdErr = string.Empty;
             var psi = new ProcessStartInfo
@@ -230,7 +230,7 @@ namespace GitConfigTool.Services
             {
                 var proc = Process.Start(psi);
                 if (proc == null)
-                    return (false, "无法启动 gh 进程", null);
+                    return (false, Helpers.Localization.T("rt.040"), null);
 
                 // 逐行异步读取，才能实时拿到设备码与授权 URL
                 proc.ErrorDataReceived += (s, e) =>
@@ -240,7 +240,7 @@ namespace GitConfigTool.Services
                 };
                 proc.BeginErrorReadLine();
                 HasLoginStream = true;
-                return (true, "已在后台启动 gh 登录", proc);
+                return (true, Helpers.Localization.T("rt.041"), proc);
             }
             catch (Exception ex)
             {
@@ -279,7 +279,7 @@ namespace GitConfigTool.Services
         {
             var result = await RunGhAsync($"auth logout --hostname \"{host}\" --user \"{username}\"");
             if (result.ExitCode == 0)
-                return (true, $"已退出登录 {username}@{host}");
+                return (true, Helpers.Localization.T("rt.042", username, host));
             return (false, result.StdErr.Length > 0 ? result.StdErr : result.StdOut);
         }
 

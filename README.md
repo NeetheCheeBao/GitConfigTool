@@ -1,10 +1,6 @@
 <div align="center">
-<h1> Git Config Tool </h1>
 <img src="assets/icon.ico" width="128" alt="logo" />
-
-> **Windows平台 `Git` 多账号快速切换工具**
-
-> 把繁杂的命令通过GUI快速操作，提高效率，节省时间
+<h1> Git Config Tool </h1>
 
 [![Platform](https://img.shields.io/badge/Platform-Windows_10%2F11-0078D4?logo=windows&logoColor=white)](https://www.microsoft.com/windows)
 [![Runtime](https://img.shields.io/badge/Runtime-.NET_Framework_4.8-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/download/dotnet-framework)
@@ -12,11 +8,17 @@
 [![UI](https://img.shields.io/badge/UI-WPF-68217A?logo=dotnet&logoColor=white)](https://learn.microsoft.com/dotnet/desktop/wpf/)
 [![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
+> **Windows平台 `Git` 多账号快速切换工具**
+
+> 把繁杂的命令通过GUI快速操作，提高效率，节省时间
+
 </div>
 
 ## 📷 截图展示
 
-![img](screenshot/demo1.png)
+| GitConfig 页面 | GitHub CLI 页面 |
+| :---: | :---:|
+| ![img](screenshot/demo1.png) | ![img](screenshot/demo2.png) |
 
 ## 🌟 特色
 
@@ -42,7 +44,7 @@
 
 ## ⬇️ 下载使用
 
-[![Releases](https://img.shields.io/badge/Download%20Releases-7C25FF?style=for-the-badge&logoColor=white")](https://github.com/NeetheCheeBao/GitConfigTool/releases)
+[![Releases](https://img.shields.io/badge/Download%20Releases-7C25FF?style=for-the-badge&logoColor=white)](https://github.com/NeetheCheeBao/GitConfigTool/releases)
 
 ## ⚙️ 工作原理
 
@@ -92,21 +94,21 @@ gh repo clone NeetheCheeBao/GitConfigTool
 .\build.bat
 ```
 
-3. 检查产物：`bin\Release\GitConfigTool.exe`
+3. 检查产物：`bin\Release\GitConfigTool_<版本>.exe`（名称与版本来自 `version.ini`；语言包已嵌入 exe，无需附带额外文件）
 
 ## 📂 项目结构
 
 ```text
 GitConfigTool
 |   .gitignore                            # Git忽略配置
-|   App.xaml                              # 应用入口：全局样式
-|   App.xaml.cs                           # 应用类（仅声明）
+|   App.xaml                              # 全局样式与应用资源
+|   App.xaml.cs                           # 启动入口：启动器 → 分阶段加载 → 主窗口
 |   build.bat                             # 一键构建脚本
 |   GitConfigTool.csproj                  # 项目文件：net48 / WPF / 单 exe 配置
 |   GitConfigTool.sln                     # Visual Studio 解决方案
 |   LICENSE                               # 许可证
 |   README.md                             # 自述文件
-|   version.ini                           # 版本号：构建脚本与程序集共用
+|   version.ini                           # 名称与版本号：构建脚本与程序集共用
 |   
 +---assets                                # 静态资源
 |       icon.ico                          # 程序图标
@@ -117,11 +119,17 @@ GitConfigTool
 |       CredentialCleaner.cs              # 清理 gh 在系统凭据库里的残留 token
 |       ExecutableLocator.cs              # 定位 git / gh 及 Git 自带工具的真实路径
 |       FolderWatcher.cs                  # 目录监听：去抖 + 切回 UI 线程
+|       Localization.cs                   # 语言包解析、按 ID 取文本、切换语言
 |       PathDisplay.cs                    # 把绝对路径压缩成 %USERPROFILE% 等写法
 |       RecycleBin.cs                     # 把文件移到回收站，而不是直接删除
 |       RelayCommand.cs                   # ICommand 实现（同步 + 异步两个版本）
 |       ShellHelper.cs                    # 资源管理器定位与剪贴板复制
 |       SshKeyValidator.cs                # SSH 密钥与白名单的格式校验（纯内存）
+|       
++---langs                                # 界面语言包（编译进 exe）
+|       index.json                        # 索引：默认语言、顺序、语言显示名
+|       en_us.json                        # 英文
+|       zh_cn.json                        # 简体中文
 |       
 +---models                                # 数据模型
 |       ConfigDisplayRow.cs               # 「当前全局配置」展示行
@@ -139,6 +147,7 @@ GitConfigTool
 |       
 +---screenshot                            # 界面截图
 |       demo1.png                         # 演示截图
+|       demo2.png                         # 演示截图
 |       
 +---services                              # 业务服务层（对外部命令与文件的封装）
 |       GithubCliService.cs               # gh 账号管理：状态解析 / 登录 / 切换 / 退出
@@ -147,11 +156,13 @@ GitConfigTool
 |       SshService.cs                     # SSH 密钥与白名单：列出 / 生成 / 读写 / 对账
 |       
 +---viewmodels                            # 视图模型
-|       MainViewModel.cs                  # 主视图模型：初始化与全部命令
+|       MainViewModel.cs                  # 主视图模型：初始化、语言切换与全部命令
 |       
 \---views                                 # 视图（窗口与对话框）
+        LauncherWindow.xaml                # 启动器 / 忙碌小窗：转圈 + 阶段文字 + 百分比
+        LauncherWindow.xaml.cs             # 转圈动画、进度更新、运行时忙碌模式
         MainWindow.xaml                   # 主窗口：四个标签页的全部界面
-        MainWindow.xaml.cs                # 窗口事件回调、命令记录着色渲染
+        MainWindow.xaml.cs                # 窗口事件回调、语言菜单、命令记录着色渲染
         ProfileEditWindow.xaml            # 档案编辑对话框（身份 / 签名 / 凭据字段）
         ProfileEditWindow.xaml.cs         # 保存前校验必填项
         SshKeyCreateWindow.xaml           # 创建密钥对话框（名称 / 算法 / 标识）

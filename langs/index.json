@@ -1,0 +1,6 @@
+{
+  "default": "zh_cn",
+  "order": "zh_cn,en_us",
+  "zh_cn": "简体中文",
+  "en_us": "English"
+}

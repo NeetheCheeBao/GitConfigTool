@@ -2,6 +2,7 @@ using System;
 using System.Windows;
 using System.Windows.Documents;
 using System.Windows.Media;
+using System.Windows.Controls;
 using GitConfigTool.ViewModels;
 
 namespace GitConfigTool.Views
@@ -12,6 +13,7 @@ namespace GitConfigTool.Views
     public partial class MainWindow : Window
     {
         private readonly MainViewModel _vm;
+        private LauncherWindow _busyWindow;
 
         /// <summary>日志行的颜色约定</summary>
         private static readonly Brush BrushCommand = new SolidColorBrush(Color.FromRgb(0xFF, 0xE0, 0x6C));  // 黄色：执行的命令
@@ -32,14 +34,14 @@ namespace GitConfigTool.Views
             };
 
         /// <summary>从 "[HH:mm:ss] 正文" 中取出正文</summary>
-        public MainWindow()
+        public MainWindow(MainViewModel vm)
         {
             InitializeComponent();
 
             // 标题栏版本号
             Title = Helpers.AppInfo.Title;
 
-            _vm = new MainViewModel();
+            _vm = vm;
             DataContext = _vm;
 
             _vm.RequestEditProfile += (s, e) =>
@@ -80,23 +82,76 @@ namespace GitConfigTool.Views
             };
 
             // 目录监听要在窗口关闭时释放
-            Closed += (s, e) => _vm.Dispose();
+            Closed += (s, e) =>
+            {
+                _busyWindow?.Close();
+                _busyWindow = null;
+                _vm.Dispose();
+            };
 
-            Loaded += async (s, e) => await _vm.InitializeAsync();
-
-            // RichTextBox 不是依赖属性绑定目标，因此监听视图模型通知来重建内容
+            // 日志、忙碌小窗、状态栏都由视图模型通知驱动
             _vm.PropertyChanged += (s, e) =>
             {
                 if (e.PropertyName == nameof(MainViewModel.CommandLog))
                     RenderLog();
+                else if (e.PropertyName == nameof(MainViewModel.IsBusy))
+                    SyncBusyWindow();
+                else if (e.PropertyName == nameof(MainViewModel.StatusMessage))
+                    _busyWindow?.SetBusyText(_vm.StatusMessage);
             };
             Loaded += (s, e) => RenderLog();
+        }
+
+        // 忙碌小窗独占操作：禁用主窗口输入，避免加载期间误点其它命令
+        private void SyncBusyWindow()
+        {
+            if (_vm.IsBusy)
+            {
+                if (_busyWindow != null) return;
+                _busyWindow = new LauncherWindow();
+                _busyWindow.UseBusyMode(_vm.StatusMessage);
+                _busyWindow.Owner = this;
+                _busyWindow.Show();
+                IsEnabled = false;
+            }
+            else if (_busyWindow != null)
+            {
+                IsEnabled = true;
+                _busyWindow.Close();
+                _busyWindow = null;
+            }
         }
 
         /// <summary>
         /// 点击项目地址：用默认浏览器打开仓库页面
         /// </summary>
         /// <summary>在默认浏览器中打开链接</summary>
+        private void LanguageMenuButton_Click(object sender, RoutedEventArgs e)
+        {
+            var menu = new ContextMenu();
+            foreach (var lang in Helpers.Localization.Languages)
+            {
+                var item = new MenuItem
+                {
+                    Header = lang.Name,
+                    IsCheckable = true,
+                    IsChecked = lang.Id == _vm.SelectedLanguageId,
+                    Tag = lang.Id
+                };
+                item.Click += LanguageMenuItem_Click;
+                menu.Items.Add(item);
+            }
+            menu.PlacementTarget = (Button)sender;
+            menu.IsOpen = true;
+        }
+
+        private void LanguageMenuItem_Click(object sender, RoutedEventArgs e)
+        {
+            if (!_vm.SelectLanguage((string)((MenuItem)sender).Tag)) return;
+            if (_vm.RefreshCommand.CanExecute(null))
+                _vm.RefreshCommand.Execute(null);
+        }
+
         private static void OpenUrl(string url)
         {
             try
@@ -109,8 +164,8 @@ namespace GitConfigTool.Views
             }
             catch (Exception ex)
             {
-                MessageBox.Show("无法打开链接：" + ex.Message + "\n\n" + url,
-                    "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(Helpers.Localization.T("msg.open_link_failed") + ex.Message + "\n\n" + url,
+                    Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -157,8 +212,8 @@ namespace GitConfigTool.Views
             var content = _vm.LoadKeyPairContent(entry);
             if (content == null)
             {
-                MessageBox.Show("无法读取密钥「" + entry.Name + "」的文件内容。",
-                    "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(Helpers.Localization.T("msg.read_key_failed_prefix") + entry.Name + Helpers.Localization.T("msg.read_key_failed_suffix"),
+                    Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -175,8 +230,8 @@ namespace GitConfigTool.Views
             var content = _vm.LoadWhitelistContent();
             if (content == null)
             {
-                MessageBox.Show("无法读取「" + entry.Name + "」的文件内容。",
-                    "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(Helpers.Localization.T("msg.read_whitelist_failed_prefix") + entry.Name + Helpers.Localization.T("msg.read_key_failed_suffix"),
+                    Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 

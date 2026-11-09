@@ -37,13 +37,13 @@ namespace GitConfigTool.Views
 
             if (name.Length == 0)
             {
-                Warn("请填写密钥名");
+                Warn(Helpers.Localization.T("rt.192"));
                 return;
             }
 
             if (name.IndexOfAny(Path.GetInvalidFileNameChars()) >= 0)
             {
-                Warn("密钥名不能包含 \\ / : * ? \" < > | 等字符");
+                Warn(Helpers.Localization.T("rt.193"));
                 return;
             }
 
@@ -52,7 +52,7 @@ namespace GitConfigTool.Views
                 if (name.Equals(reserved, StringComparison.OrdinalIgnoreCase) ||
                     name.Equals(reserved + ".pub", StringComparison.OrdinalIgnoreCase))
                 {
-                    Warn("「" + name + "」是 SSH 目录里的保留文件名，请换一个");
+                    Warn("「" + name + Helpers.Localization.T("rt.194"));
                     return;
                 }
             }
@@ -60,9 +60,9 @@ namespace GitConfigTool.Views
             // 加入白名单需要标识，空标识会让这一步静默失效
             if (Request.AddToAllowedSigners && string.IsNullOrWhiteSpace(Request.Comment))
             {
-                Warn("勾选了「自动将公钥加入白名单」，请先填写标识；\n" +
-                     "白名单每行是「标识 算法 公钥」，标识通常是邮箱。\n\n" +
-                     "如果不需要加入白名单，请取消勾选。");
+                Warn(Helpers.Localization.T("rt.195") +
+                     Helpers.Localization.T("rt.196") +
+                     Helpers.Localization.T("rt.197"));
                 return;
             }
 
@@ -80,7 +80,7 @@ namespace GitConfigTool.Views
 
         private static void Warn(string message)
         {
-            MessageBox.Show(message, "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+            MessageBox.Show(message, Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Warning);
         }
     }
 }

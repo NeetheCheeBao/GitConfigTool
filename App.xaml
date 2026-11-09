@@ -1,8 +1,7 @@
 <Application x:Class="GitConfigTool.App"
              xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
              xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-             xmlns:helpers="clr-namespace:GitConfigTool.Helpers"
-             StartupUri="views/MainWindow.xaml">
+             xmlns:helpers="clr-namespace:GitConfigTool.Helpers">
     <Application.Resources>
         <ResourceDictionary>
             <!-- 按钮：浅灰底 + 细边框 + 深色字，扁平紧凑 -->

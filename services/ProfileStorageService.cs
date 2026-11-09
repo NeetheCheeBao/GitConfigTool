@@ -48,11 +48,11 @@ namespace GitConfigTool.Services
                 if (File.Exists(_storagePath)) return;   // 新文件已存在，不动
 
                 File.Move(legacy, _storagePath);
-                MigrationNote = "已把旧数据文件 " + LegacyDataFileName + " 重命名为 " + DataFileName;
+                MigrationNote = Helpers.Localization.T("rt.050") + LegacyDataFileName + Helpers.Localization.T("rt.051") + DataFileName;
             }
             catch (Exception ex)
             {
-                MigrationNote = "数据文件迁移失败：" + ex.Message;
+                MigrationNote = Helpers.Localization.T("rt.052") + ex.Message;
             }
         }
 

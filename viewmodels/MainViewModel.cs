@@ -31,10 +31,10 @@ namespace GitConfigTool.ViewModels
         private bool _autoRefreshing;
 
 
-        private string _statusMessage = "就绪";
+        private string _statusMessage = Helpers.Localization.T("rt.093");
         private bool _isBusy;
-        private string _gitVersion = "检测中...";
-        private string _ghVersion = "检测中...";
+        private string _gitVersion = Helpers.Localization.T("rt.094");
+        private string _ghVersion = Helpers.Localization.T("rt.094");
         private string _gitPath = "";
         private string _ghPath = "";
         private string _currentUserName = "";
@@ -93,9 +93,9 @@ namespace GitConfigTool.ViewModels
         {
             get
             {
-                if (!_sshService.FolderExists) return "未找到 SSH 目录";
-                if (IsSshListEmpty) return "没有找到 SSH 密钥";
-                return $"共 {SshEntries.Count} 项";
+                if (!_sshService.FolderExists) return Helpers.Localization.T("rt.095");
+                if (IsSshListEmpty) return Helpers.Localization.T("rt.096");
+                return Helpers.Localization.T("rt.097", SshEntries.Count);
             }
         }
 
@@ -125,12 +125,12 @@ namespace GitConfigTool.ViewModels
         private void LoadEnvironmentText()
         {
             var lines = new List<string>();
-            AddEnvironmentLine(lines, "应用", Helpers.AppInfo.Name + " " + Helpers.AppInfo.Version);
+            AddEnvironmentLine(lines, Helpers.Localization.T("rt.098"), Helpers.AppInfo.Name + " " + Helpers.AppInfo.Version);
             AddEnvironmentLine(lines, "Git", WithPath(GitVersion, GitPath));
             AddEnvironmentLine(lines, "GitHub CLI", WithPath(GhVersion, GhPath));
-            AddEnvironmentLine(lines, "SSH 目录", SshFolderPathDisplay);
-            AddEnvironmentLine(lines, "配置文件", GitConfigPathDisplay);
-            AddEnvironmentLine(lines, "系统", Environment.OSVersion.VersionString + "　·　" +
+            AddEnvironmentLine(lines, Helpers.Localization.T("rt.099"), SshFolderPathDisplay);
+            AddEnvironmentLine(lines, Helpers.Localization.T("rt.100"), GitConfigPathDisplay);
+            AddEnvironmentLine(lines, Helpers.Localization.T("rt.101"), Environment.OSVersion.VersionString + "　·　" +
                 System.Runtime.InteropServices.RuntimeInformation.FrameworkDescription);
 
             EnvironmentText = string.Join(Environment.NewLine, lines);
@@ -156,8 +156,8 @@ namespace GitConfigTool.ViewModels
         private void CopyEnvironmentInfo()
         {
             StatusMessage = ShellHelper.CopyToClipboard(EnvironmentText)
-                ? "本机信息已复制到剪贴板"
-                : "复制失败，剪贴板被占用";
+                ? Helpers.Localization.T("rt.102")
+                : Helpers.Localization.T("rt.103");
         }
 
         public string StatusMessage
@@ -170,6 +170,15 @@ namespace GitConfigTool.ViewModels
         {
             get => _isBusy;
             set { _isBusy = value; OnPropertyChanged(); }
+        }
+
+        public string SelectedLanguageId { get; private set; } = Helpers.Localization.DefaultLanguageId;
+
+        public bool SelectLanguage(string id)
+        {
+            if (string.IsNullOrEmpty(id) || id == SelectedLanguageId) return false;
+            SelectedLanguageId = id;
+            return true;
         }
 
         public string GitVersion
@@ -280,7 +289,7 @@ namespace GitConfigTool.ViewModels
         }
 
         /// <summary>设备码为空时的占位提示</summary>
-        public string DeviceCodeText => string.IsNullOrEmpty(_deviceCode) ? "获取中..." : _deviceCode;
+        public string DeviceCodeText => string.IsNullOrEmpty(_deviceCode) ? Helpers.Localization.T("rt.106") : _deviceCode;
 
         /// <summary>授权页面地址（为空时用兜底地址）</summary>
         public string GithubUrlDisplay => string.IsNullOrEmpty(_githubUrl) ? DefaultGithubDeviceUrl : _githubUrl;
@@ -361,7 +370,7 @@ namespace GitConfigTool.ViewModels
             OpenGithubDevicePageCommand = new RelayCommand(_ => OpenGithubDevicePage());
             CopyDeviceCodeCommand = new RelayCommand(_ => CopyDeviceCode());
             CancelLoginCommand = new RelayCommand(_ => CancelGithubLogin());
-            RefreshGithubCommand = new AsyncRelayCommand(async _ => await RefreshGithubFromLogAsync("手动刷新"));
+            RefreshGithubCommand = new AsyncRelayCommand(async _ => await RefreshGithubFromLogAsync(Helpers.Localization.T("rt.107")));
             OpenGitConfigLocationCommand = new RelayCommand(_ => OpenGitConfigLocation());
             OpenProfilesJsonFolderCommand = new RelayCommand(_ => OpenProfilesJsonFolder());
             SaveConfigItemCommand = new AsyncRelayCommand(async _ => await SaveSelectedConfigItemAsync(), _ => SelectedConfigItem != null);
@@ -385,56 +394,69 @@ namespace GitConfigTool.ViewModels
             CopyEnvironmentCommand = new RelayCommand(_ => CopyEnvironmentInfo());
         }
 
-        public async Task InitializeAsync()
+        public async Task InitializeAsync(IProgress<(string Text, int Percent)> progress)
         {
             IsBusy = true;
-            StatusMessage = "正在加载...";
+            StatusMessage = Helpers.Localization.T("rt.108");
             try
             {
-                AppendCommandLog("程序启动，开始读取本机状态");
+                AppendCommandLog(Helpers.Localization.T("rt.109"));
+
+                progress?.Report((Helpers.Localization.T("loading.check_tools"), 5));
 
                 var gitCheck = await _gitService.CheckGitAvailableAsync();
-                GitVersion = gitCheck.Ok ? gitCheck.Version : "未安装或不可用";
+                GitVersion = gitCheck.Ok ? gitCheck.Version : Helpers.Localization.T("rt.110");
                 GitPath = _gitService.GitExecutablePath ?? "";
                 AppendCommandLine("git --version");
                 AppendResultLog("-> " + GitVersion);
                 if (!string.IsNullOrEmpty(GitPath))
-                    AppendResultLog("-> 位置: " + GitPath);
+                    AppendResultLog(Helpers.Localization.T("rt.111") + GitPath);
                 else
-                    AppendErrorLog("-> " + (_gitService.DiscoveryError ?? "未找到 git"));
+                    AppendErrorLog("-> " + (_gitService.DiscoveryError ?? Helpers.Localization.T("rt.112")));
 
                 var ghCheck = await _ghService.CheckAvailableAsync();
-                GhVersion = ghCheck.Ok ? ghCheck.Version : "未安装或不可用";
+                GhVersion = ghCheck.Ok ? ghCheck.Version : Helpers.Localization.T("rt.110");
                 GhPath = _ghService.GhExecutablePath ?? "";
                 AppendCommandLine("gh --version");
                 AppendResultLog("-> " + GhVersion);
                 if (!string.IsNullOrEmpty(GhPath))
-                    AppendResultLog("-> 位置: " + GhPath);
+                    AppendResultLog(Helpers.Localization.T("rt.111") + GhPath);
                 else
-                    AppendErrorLog("-> " + (_ghService.DiscoveryError ?? "未找到 gh"));
+                    AppendErrorLog("-> " + (_ghService.DiscoveryError ?? Helpers.Localization.T("rt.113")));
 
+                progress?.Report((Helpers.Localization.T("loading.read_profiles"), 15));
                 await LoadProfilesAsync();
+
+                progress?.Report((Helpers.Localization.T("loading.current_config"), 35));
                 await RefreshCurrentUserAsync();
+
+                progress?.Report((Helpers.Localization.T("loading.full_config"), 45));
                 await LoadConfigListAsync();
-                await RefreshGithubFromLogAsync("启动时读取 gh 账号列表");
+
+                await RefreshGithubFromLogAsync(Helpers.Localization.T("rt.114"), progress);
+
+                progress?.Report((Helpers.Localization.T("loading.cleanup"), 88));
                 CleanupOrphanedCredentials();
 
                 // 数据文件从 profiles.json 迁移到 GitConfig.json 时给出提示
                 if (!string.IsNullOrEmpty(_storage.MigrationNote))
                     AppendCommandLog(_storage.MigrationNote);
 
+                progress?.Report((Helpers.Localization.T("loading.ssh"), 92));
                 await LoadProfilesJsonAsync();
                 LoadSshEntries();
                 LoadEnvironmentText();
 
+                progress?.Report((Helpers.Localization.T("loading.watcher"), 97));
                 StartWatching();
 
-                StatusMessage = "加载完成";
+                StatusMessage = Helpers.Localization.T("rt.115");
+                progress?.Report((Helpers.Localization.T("loading.done"), 100));
             }
             catch (Exception ex)
             {
-                AppendErrorLog("初始化失败: " + ex.Message);
-                StatusMessage = "初始化失败: " + ex.Message;
+                AppendErrorLog(Helpers.Localization.T("rt.116") + ex.Message);
+                StatusMessage = Helpers.Localization.T("rt.116") + ex.Message;
             }
             finally
             {
@@ -444,25 +466,35 @@ namespace GitConfigTool.ViewModels
 
         private async Task RefreshAllAsync()
         {
+            // 语言在刷新流程开头加载；旧语言的命令记录是历史文本，无法追溯翻译，直接清空
+            if (SelectedLanguageId != Helpers.Localization.AppliedLanguageId)
+            {
+                Helpers.Localization.Apply(SelectedLanguageId);
+                // 版本号等表达式属性不会自己发通知，让所有绑定重新取值
+                OnPropertyChanged(string.Empty);
+                LogEntries.Clear();
+                RebuildCommandLog();
+            }
+
             IsBusy = true;
-            StatusMessage = "刷新中...";
+            StatusMessage = Helpers.Localization.T("rt.117");
             try
             {
-                AppendCommandLog("刷新全部：开始重新读取本机状态");
+                AppendCommandLog(Helpers.Localization.T("rt.118"));
                 await LoadProfilesAsync();
                 await RefreshCurrentUserAsync();
                 await LoadConfigListAsync();
-                await RefreshGithubFromLogAsync("刷新全部");
+                await RefreshGithubFromLogAsync(Helpers.Localization.T("rt.119"));
                 await LoadProfilesJsonAsync();
                 LoadSshEntries();
                 LoadEnvironmentText();
-                AppendCommandLog("刷新全部：完成");
-                StatusMessage = "刷新完成 " + DateTime.Now.ToString("HH:mm:ss");
+                AppendCommandLog(Helpers.Localization.T("rt.120"));
+                StatusMessage = Helpers.Localization.T("rt.121") + DateTime.Now.ToString("HH:mm:ss");
             }
             catch (Exception ex)
             {
-                AppendErrorLog("刷新失败: " + ex.Message);
-                StatusMessage = "刷新失败: " + ex.Message;
+                AppendErrorLog(Helpers.Localization.T("rt.122") + ex.Message);
+                StatusMessage = Helpers.Localization.T("rt.122") + ex.Message;
             }
             finally
             {
@@ -501,11 +533,11 @@ namespace GitConfigTool.ViewModels
             {
                 await LoadProfilesAsync();
                 await LoadProfilesJsonAsync();
-                StatusMessage = "配置文件已变化，自动刷新 " + DateTime.Now.ToString("HH:mm:ss");
+                StatusMessage = Helpers.Localization.T("rt.123") + DateTime.Now.ToString("HH:mm:ss");
             }
             catch (Exception ex)
             {
-                AppendErrorLog("自动刷新失败: " + ex.Message);
+                AppendErrorLog(Helpers.Localization.T("rt.124") + ex.Message);
             }
             finally
             {
@@ -527,11 +559,11 @@ namespace GitConfigTool.ViewModels
             {
                 await RefreshCurrentUserAsync();
                 await LoadProfilesAsync();
-                StatusMessage = "git 配置已变化，自动刷新 " + DateTime.Now.ToString("HH:mm:ss");
+                StatusMessage = Helpers.Localization.T("rt.125") + DateTime.Now.ToString("HH:mm:ss");
             }
             catch (Exception ex)
             {
-                AppendErrorLog("自动刷新失败: " + ex.Message);
+                AppendErrorLog(Helpers.Localization.T("rt.124") + ex.Message);
             }
             finally
             {
@@ -545,7 +577,7 @@ namespace GitConfigTool.ViewModels
             if (IsBusy) return;
 
             LoadSshEntries();
-            StatusMessage = "SSH 目录已变化，自动刷新 " + DateTime.Now.ToString("HH:mm:ss");
+            StatusMessage = Helpers.Localization.T("rt.126") + DateTime.Now.ToString("HH:mm:ss");
         }
 
         public void Dispose()
@@ -609,22 +641,22 @@ namespace GitConfigTool.ViewModels
         {
             var user = await _gitService.GetCurrentUserAsync();
 
-            CurrentUserName = user.Name ?? "(未设置)";
-            CurrentUserEmail = user.Email ?? "(未设置)";
-            CurrentSigningKey = user.SigningKey ?? "(未设置)";
+            CurrentUserName = user.Name ?? Helpers.Localization.T("rt.127");
+            CurrentUserEmail = user.Email ?? Helpers.Localization.T("rt.127");
+            CurrentSigningKey = user.SigningKey ?? Helpers.Localization.T("rt.127");
             CurrentSigningFormat = user.SigningFormat ?? "openpgp";
             CurrentCommitSign = user.CommitSign;
 
             // 「当前全局配置」展示的键值列表
             CurrentConfigRows.Clear();
-            AddConfigRow("user.name", "提交者姓名", user.Name);
-            AddConfigRow("user.email", "提交者邮箱", user.Email);
-            AddConfigRow("user.signingkey", "签名密钥", user.SigningKey);
-            AddConfigRow("gpg.format", "签名格式", user.SigningFormat);
-            AddConfigRow("commit.gpgsign", "提交时自动签名", BoolText(user.CommitSign));
-            AddConfigRow("tag.gpgsign", "打标签时自动签名", BoolText(user.TagSign));
-            AddConfigRow("credential.helper", "凭据助手", user.CredentialHelper);
-            AddConfigRow("http.sslBackend", "HTTPS 后端", user.SslBackend);
+            AddConfigRow("user.name", Helpers.Localization.T("rt.128"), user.Name);
+            AddConfigRow("user.email", Helpers.Localization.T("rt.129"), user.Email);
+            AddConfigRow("user.signingkey", Helpers.Localization.T("rt.130"), user.SigningKey);
+            AddConfigRow("gpg.format", Helpers.Localization.T("rt.131"), user.SigningFormat);
+            AddConfigRow("commit.gpgsign", Helpers.Localization.T("rt.132"), BoolText(user.CommitSign));
+            AddConfigRow("tag.gpgsign", Helpers.Localization.T("rt.133"), BoolText(user.TagSign));
+            AddConfigRow("credential.helper", Helpers.Localization.T("rt.134"), user.CredentialHelper);
+            AddConfigRow("http.sslBackend", Helpers.Localization.T("rt.135"), user.SslBackend);
         }
 
         /// <summary>
@@ -703,7 +735,7 @@ namespace GitConfigTool.ViewModels
         /// </summary>
         private void CreateWhitelistFile()
         {
-            AppendCommandLog("创建 SSH 签名白名单文件");
+            AppendCommandLog(Helpers.Localization.T("rt.136"));
 
             var result = _sshService.CreateWhitelistFile();
             if (result.Ok)
@@ -714,7 +746,7 @@ namespace GitConfigTool.ViewModels
             else
             {
                 AppendErrorLog("-> " + result.Message);
-                MessageBox.Show(result.Message, "创建失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(result.Message, Helpers.Localization.T("msg.create_failed"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             StatusMessage = result.Message;
         }
@@ -733,7 +765,7 @@ namespace GitConfigTool.ViewModels
             var ownEmails = new List<string> { CurrentUserEmail };
             foreach (var profile in Profiles) ownEmails.Add(profile.Email);
 
-            AppendCommandLog("识别密钥项目：比对密钥对与白名单");
+            AppendCommandLog(Helpers.Localization.T("rt.137"));
 
             var items = _sshService.AnalyzeWhitelist(ownEmails);
             RequestReconcileWhitelist?.Invoke(new WhitelistReconcileResult { Items = items });
@@ -753,7 +785,7 @@ namespace GitConfigTool.ViewModels
             else
             {
                 AppendErrorLog("-> " + result.Message);
-                MessageBox.Show(result.Message, "操作失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(result.Message, Helpers.Localization.T("msg.operation_failed"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             StatusMessage = result.Message;
         }
@@ -773,7 +805,7 @@ namespace GitConfigTool.ViewModels
         {
             if (content == null) return;
 
-            AppendCommandLog("保存 SSH 签名白名单");
+            AppendCommandLog(Helpers.Localization.T("rt.138"));
 
             var result = _sshService.SaveWhitelistContent(content);
             if (result.Ok)
@@ -784,7 +816,7 @@ namespace GitConfigTool.ViewModels
             else
             {
                 AppendErrorLog("-> " + result.Message);
-                MessageBox.Show(result.Message, "保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(result.Message, Helpers.Localization.T("msg.save_failed"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             StatusMessage = result.Message;
         }
@@ -796,7 +828,7 @@ namespace GitConfigTool.ViewModels
         {
             if (content == null) return;
 
-            AppendCommandLog("保存 SSH 密钥 " + content.Name);
+            AppendCommandLog(Helpers.Localization.T("rt.139") + content.Name);
 
             var result = _sshService.SaveKeyPairContent(content);
             if (result.Ok)
@@ -807,7 +839,7 @@ namespace GitConfigTool.ViewModels
             else
             {
                 AppendErrorLog("-> " + result.Message);
-                MessageBox.Show(result.Message, "保存失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(result.Message, Helpers.Localization.T("msg.save_failed"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
             StatusMessage = result.Message;
         }
@@ -821,10 +853,10 @@ namespace GitConfigTool.ViewModels
             if (request == null) return;
 
             IsBusy = true;
-            StatusMessage = "正在生成密钥对...";
+            StatusMessage = Helpers.Localization.T("rt.140");
             try
             {
-                AppendCommandLog("生成 SSH 密钥对");
+                AppendCommandLog(Helpers.Localization.T("rt.141"));
                 AppendCommandLine("ssh-keygen -t " + request.KeyType + " -f " + request.KeyName);
 
                 var result = await Task.Run(() => _sshService.CreateKeyPair(request));
@@ -836,7 +868,7 @@ namespace GitConfigTool.ViewModels
                 else
                 {
                     AppendErrorLog("-> " + result.Message);
-                    MessageBox.Show(result.Message, "创建失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    MessageBox.Show(result.Message, Helpers.Localization.T("msg.create_failed"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
                 StatusMessage = result.Message;
             }
@@ -870,44 +902,42 @@ namespace GitConfigTool.ViewModels
 
             if (files.Count == 0)
             {
-                MessageBox.Show("没有找到「" + entry.Name + "」对应的文件。",
-                    "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(Helpers.Localization.T("msg.no_file_prefix") + entry.Name + Helpers.Localization.T("msg.no_file_suffix"),
+                    Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
-            var what = entry.IsWhitelist ? "白名单" : "密钥「" + entry.Name + "」";
-            var text = "确定删除" + what + "吗？\n\n" +
-                       "以下文件将移到回收站（可以恢复）：\n" +
-                       string.Join("\n", files);
+            var what = entry.IsWhitelist ? Helpers.Localization.T("rt.028") : Helpers.Localization.T("rt.142") + entry.Name + "」";
+            var text = Helpers.Localization.T("msg.confirm_delete_files", what, string.Join("\n", files));
 
             if (entry.IsWhitelist)
-                text += "\n\n注意：删除后，本机校验提交签名会找不到信任的标识。";
+                text += Helpers.Localization.T("msg.delete_whitelist_note");
             else if (entry.HasPrivateKey)
-                text += "\n\n注意：私钥删除后，用该密钥签名的提交将无法再验证。";
+                text += Helpers.Localization.T("msg.delete_key_note");
 
-            if (MessageBox.Show(text, "确认删除", MessageBoxButton.OKCancel, MessageBoxImage.Warning)
+            if (MessageBox.Show(text, Helpers.Localization.T("msg.title_confirm_delete"), MessageBoxButton.OKCancel, MessageBoxImage.Warning)
                 != MessageBoxResult.OK)
                 return;
 
             IsBusy = true;
-            StatusMessage = "正在删除...";
+            StatusMessage = Helpers.Localization.T("rt.143");
             try
             {
-                AppendCommandLog("删除 SSH " + (entry.IsWhitelist ? "签名白名单" : "密钥对 " + entry.Name));
+                AppendCommandLog(Helpers.Localization.T("rt.144") + (entry.IsWhitelist ? Helpers.Localization.T("rt.032") : Helpers.Localization.T("rt.145") + entry.Name));
 
                 var ok = await Task.Run(() => RecycleBin.MoveToRecycleBin(files));
                 if (ok)
                 {
-                    var message = "已删除" + what + "，文件在回收站";
+                    var message = Helpers.Localization.T("rt.047") + what + Helpers.Localization.T("rt.146");
                     AppendSuccessLog("-> " + message);
                     LoadSshEntries();
                     StatusMessage = message;
                 }
                 else
                 {
-                    var message = "移到回收站失败，文件未被删除";
+                    var message = Helpers.Localization.T("rt.147");
                     AppendErrorLog("-> " + message);
-                    MessageBox.Show(message + "。", "删除失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show(message + "。", Helpers.Localization.T("msg.delete_failed"), MessageBoxButton.OK, MessageBoxImage.Error);
                     StatusMessage = message;
                 }
             }
@@ -925,7 +955,7 @@ namespace GitConfigTool.ViewModels
             var dir = _sshService.SshFolderPath;
             if (!_sshService.FolderExists)
             {
-                MessageBox.Show("SSH 目录不存在：\n" + dir, "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(Helpers.Localization.T("msg.ssh_dir_missing") + dir, Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -937,12 +967,12 @@ namespace GitConfigTool.ViewModels
                     Arguments = "\"" + dir + "\"",
                     UseShellExecute = true
                 });
-                StatusMessage = "已打开 SSH 目录: " + dir;
+                StatusMessage = Helpers.Localization.T("rt.148") + dir;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("无法打开目录: " + ex.Message + "\n\n路径: " + dir,
-                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(Helpers.Localization.T("msg.open_dir_failed") + ex.Message + Helpers.Localization.T("msg.path_suffix") + dir,
+                    Helpers.Localization.T("msg.title_error"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -955,20 +985,22 @@ namespace GitConfigTool.ViewModels
             try
             {
                 Clipboard.SetText(path);
-                StatusMessage = "已复制路径: " + path;
+                StatusMessage = Helpers.Localization.T("rt.149") + path;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("复制失败：" + ex.Message, "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(Helpers.Localization.T("msg.copy_failed") + ex.Message, Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
         /// <summary>
         /// 刷新 gh 账号列表，不写命令记录
         /// </summary>
-        private async Task RefreshGithubAsync()
+        private async Task RefreshGithubAsync(IProgress<(string Text, int Percent)> progress = null)
         {
+            progress?.Report((Helpers.Localization.T("loading.gh_status"), 55));
             GhAuthStatus = await _ghService.GetAuthStatusRawAsync();
+            progress?.Report((Helpers.Localization.T("loading.gh_accounts"), 74));
             await RefreshGithubAccountsAsync();
         }
 
@@ -995,7 +1027,7 @@ namespace GitConfigTool.ViewModels
             SelectedProfile = target;
 
             IsBusy = true;
-            StatusMessage = $"正在应用档案「{target.UserName}」...";
+            StatusMessage = Helpers.Localization.T("rt.150", target.UserName);
             try
             {
                 var result = await _gitService.ApplyProfileAsync(target);
@@ -1009,12 +1041,12 @@ namespace GitConfigTool.ViewModels
                     await RefreshCurrentUserAsync();
                     await LoadConfigListAsync();
                     StatusMessage = result.Message;
-                    MessageBox.Show(result.Message, "切换成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show(result.Message, Helpers.Localization.T("msg.switch_ok"), MessageBoxButton.OK, MessageBoxImage.Information);
                 }
                 else
                 {
-                    StatusMessage = "应用失败: " + result.Message;
-                    MessageBox.Show(result.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    StatusMessage = Helpers.Localization.T("rt.151") + result.Message;
+                    MessageBox.Show(result.Message, Helpers.Localization.T("msg.title_error"), MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             finally
@@ -1079,14 +1111,14 @@ namespace GitConfigTool.ViewModels
             if (string.IsNullOrWhiteSpace(EditingProfile.UserName) ||
                 string.IsNullOrWhiteSpace(EditingProfile.Email))
             {
-                MessageBox.Show("Git user.name 和 user.email 不能为空", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(Helpers.Localization.T("msg.name_email_required"), Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
             await _storage.UpsertProfileAsync(EditingProfile);
             await LoadProfilesAsync();
             await LoadProfilesJsonAsync();
-            StatusMessage = $"档案「{EditingProfile.UserName}」已保存";
+            StatusMessage = Helpers.Localization.T("rt.152", EditingProfile.UserName);
             RequestCloseEditDialog?.Invoke(this, EventArgs.Empty);
         }
 
@@ -1100,7 +1132,8 @@ namespace GitConfigTool.ViewModels
             var target = profile ?? SelectedProfile;
             if (target == null) return;
 
-            var result = MessageBox.Show($"确定删除档案「{target.UserName}」吗？", "确认删除",
+            var result = MessageBox.Show(Helpers.Localization.T("msg.confirm_delete_profile", target.UserName),
+                Helpers.Localization.T("msg.title_confirm_delete"),
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (result != MessageBoxResult.Yes) return;
 
@@ -1108,7 +1141,7 @@ namespace GitConfigTool.ViewModels
             await LoadProfilesAsync();
             await LoadProfilesJsonAsync();
             SelectedProfile = null;
-            StatusMessage = $"档案「{target.UserName}」已删除";
+            StatusMessage = Helpers.Localization.T("rt.153", target.UserName);
         }
 
         private async Task CaptureCurrentAsProfileAsync()
@@ -1116,7 +1149,7 @@ namespace GitConfigTool.ViewModels
             var user = await _gitService.GetCurrentUserAsync();
             if (string.IsNullOrWhiteSpace(user.Name) || string.IsNullOrWhiteSpace(user.Email))
             {
-                MessageBox.Show("当前 Git 用户名或邮箱未设置，无法捕获", "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(Helpers.Localization.T("msg.no_current_user"), Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 return;
             }
 
@@ -1137,7 +1170,8 @@ namespace GitConfigTool.ViewModels
                 string.Equals(p.UserName, user.Name, StringComparison.OrdinalIgnoreCase));
             if (exist != null)
             {
-                var r = MessageBox.Show($"已存在相同用户的档案「{exist.UserName}」，是否覆盖？", "确认",
+                var r = MessageBox.Show(Helpers.Localization.T("msg.confirm_overwrite_profile", exist.UserName),
+                    Helpers.Localization.T("msg.title_confirm"),
                     MessageBoxButton.YesNo, MessageBoxImage.Question);
                 if (r != MessageBoxResult.Yes) return;
                 profile.Id = exist.Id;
@@ -1147,7 +1181,7 @@ namespace GitConfigTool.ViewModels
             await _storage.UpsertProfileAsync(profile);
             await LoadProfilesAsync();
             await LoadProfilesJsonAsync();
-            StatusMessage = $"已将当前配置保存为档案「{profile.UserName}」";
+            StatusMessage = Helpers.Localization.T("rt.154", profile.UserName);
         }
 
         /// <summary>
@@ -1158,36 +1192,37 @@ namespace GitConfigTool.ViewModels
             var target = account ?? SelectedGithubAccount;
             if (target == null)
             {
-                MessageBox.Show("请先在列表中选择要切换的账号。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(Helpers.Localization.T("msg.select_account_first"), Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
             if (target.IsActive)
             {
-                MessageBox.Show($"「{target.Username}」已经是当前生效账号，无需切换。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(Helpers.Localization.T("msg.already_active", target.Username),
+                    Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
             IsBusy = true;
-            StatusMessage = $"正在切换 GitHub 账号到 {target.Username}...";
+            StatusMessage = Helpers.Localization.T("rt.155", target.Username);
             try
             {
                 var result = await _ghService.SwitchAccountAsync(target.Username, target.Host);
                 if (result.Success)
                 {
                     await RefreshGithubAsync();
-                    StatusMessage = $"已切换到 GitHub 账号 {target.Username}";
+                    StatusMessage = Helpers.Localization.T("rt.156", target.Username);
                 }
                 else
                 {
-                    StatusMessage = "切换失败: " + result.Message;
-                    MessageBox.Show(result.Message + "\n\n提示：只能切换到已登录过的账号。若该账号尚未登录，请先点「登录新账号」。",
-                        "切换失败", MessageBoxButton.OK, MessageBoxImage.Warning);
+                    StatusMessage = Helpers.Localization.T("rt.157") + result.Message;
+                    MessageBox.Show(result.Message + Helpers.Localization.T("msg.switch_hint"),
+                        Helpers.Localization.T("msg.switch_failed"), MessageBoxButton.OK, MessageBoxImage.Warning);
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = "切换异常: " + ex.Message;
-                MessageBox.Show(ex.Message, "切换异常", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = Helpers.Localization.T("rt.158") + ex.Message;
+                MessageBox.Show(ex.Message, Helpers.Localization.T("msg.switch_exception"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -1202,7 +1237,7 @@ namespace GitConfigTool.ViewModels
         {
             if (_isGithubLoggingIn)
             {
-                MessageBox.Show("已有登录流程正在进行，请先在浏览器中完成授权。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(Helpers.Localization.T("msg.login_in_progress"), Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -1213,7 +1248,7 @@ namespace GitConfigTool.ViewModels
             var start = _ghService.StartLoginWithClipboard();
             if (!start.Success)
             {
-                MessageBox.Show("无法启动登录流程：" + start.Message, "登录失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(Helpers.Localization.T("msg.login_start_failed") + start.Message, Helpers.Localization.T("msg.login_failed"), MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
 
@@ -1224,7 +1259,7 @@ namespace GitConfigTool.ViewModels
             GithubUrl = string.Empty;
             IsDeviceAuthVisible = true;
             AppendCommandLine("gh auth login --hostname github.com --git-protocol https --web --clipboard");
-            StatusMessage = "正在向 GitHub 申请设备码...";
+            StatusMessage = Helpers.Localization.T("rt.159");
 
             var urlOpened = false;
 
@@ -1245,7 +1280,7 @@ namespace GitConfigTool.ViewModels
                         if (!string.IsNullOrEmpty(code))
                         {
                             DeviceCode = code;
-                            AppendSuccessLog("设备码: " + code);
+                            AppendSuccessLog(Helpers.Localization.T("rt.160") + code);
                         }
                     }
 
@@ -1258,14 +1293,14 @@ namespace GitConfigTool.ViewModels
                         {
                             Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
                             urlOpened = true;
-                            AppendCommandLog("已打开浏览器: " + url);
-                            AppendCommandLog("请把设备码粘贴到页面并完成授权；设备码也已复制到剪贴板（Ctrl+V 即可）。");
-                            StatusMessage = "等待浏览器授权中...";
+                            AppendCommandLog(Helpers.Localization.T("rt.161") + url);
+                            AppendCommandLog(Helpers.Localization.T("rt.162"));
+                            StatusMessage = Helpers.Localization.T("rt.163");
                         }
                         catch (Exception ex)
                         {
                             urlOpened = true;   // 不再重复尝试
-                            AppendErrorLog("打开浏览器失败: " + ex.Message + "，请手动访问 " + url);
+                            AppendErrorLog(Helpers.Localization.T("rt.164") + ex.Message + Helpers.Localization.T("rt.165") + url);
                         }
                     }
 
@@ -1274,8 +1309,8 @@ namespace GitConfigTool.ViewModels
                     if (accounts.Count > before)
                     {
                         await RefreshGithubFromLogAsync();
-                        AppendSuccessLog("检测到新账号，账号列表已刷新。");
-                        StatusMessage = "GitHub 账号登录成功，列表已刷新";
+                        AppendSuccessLog(Helpers.Localization.T("rt.166"));
+                        StatusMessage = Helpers.Localization.T("rt.167");
                         return;
                     }
 
@@ -1285,29 +1320,29 @@ namespace GitConfigTool.ViewModels
                         await RefreshGithubFromLogAsync();
                         if (GithubAccounts.Count > before)
                         {
-                            AppendSuccessLog("检测到新账号，账号列表已刷新。");
-                            StatusMessage = "GitHub 账号登录成功，列表已刷新";
+                            AppendSuccessLog(Helpers.Localization.T("rt.166"));
+                            StatusMessage = Helpers.Localization.T("rt.167");
                         }
                         else
                         {
                             var detail = _ghService.GetLoginOutput();
-                            AppendErrorLog("登录流程已结束，但未检测到新账号。");
+                            AppendErrorLog(Helpers.Localization.T("rt.168"));
                             if (!string.IsNullOrEmpty(detail)) AppendResultLog(detail);
-                            StatusMessage = "登录流程已结束，未检测到新账号";
+                            StatusMessage = Helpers.Localization.T("rt.169");
                         }
                         return;
                     }
                 }
 
-                AppendErrorLog("等待授权超时（5 分钟），可稍后点「刷新账号状态」查看。");
-                StatusMessage = "登录等待超时，请点「刷新账号状态」确认";
+                AppendErrorLog(Helpers.Localization.T("rt.170"));
+                StatusMessage = Helpers.Localization.T("rt.171");
                 GhAuthStatus = await _ghService.GetAuthStatusRawAsync();
                 await RefreshGithubAccountsAsync();
             }
             catch (Exception ex)
             {
-                AppendErrorLog("登录流程异常: " + ex.Message);
-                StatusMessage = "登录异常: " + ex.Message;
+                AppendErrorLog(Helpers.Localization.T("rt.172") + ex.Message);
+                StatusMessage = Helpers.Localization.T("rt.173") + ex.Message;
             }
             finally
             {
@@ -1324,7 +1359,7 @@ namespace GitConfigTool.ViewModels
         {
             if (!_isGithubLoggingIn)
             {
-                MessageBox.Show("当前没有进行中的登录流程。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(Helpers.Localization.T("msg.no_login_in_progress"), Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
@@ -1334,8 +1369,8 @@ namespace GitConfigTool.ViewModels
             IsDeviceAuthVisible = false;
             DeviceCode = string.Empty;
             GithubUrl = string.Empty;
-            AppendErrorLog("已取消登录授权。");
-            StatusMessage = "已取消登录授权，可重新点「登录新账号」";
+            AppendErrorLog(Helpers.Localization.T("rt.174"));
+            StatusMessage = Helpers.Localization.T("rt.175");
         }
 
         /// <summary>
@@ -1370,12 +1405,12 @@ namespace GitConfigTool.ViewModels
             try
             {
                 Process.Start(new ProcessStartInfo { FileName = url, UseShellExecute = true });
-                StatusMessage = "已打开授权页面: " + url;
+                StatusMessage = Helpers.Localization.T("rt.176") + url;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("无法打开浏览器：" + ex.Message + "\n请手动访问：\n" + url,
-                    "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(Helpers.Localization.T("msg.open_browser_failed") + ex.Message + Helpers.Localization.T("msg.manual_visit") + url,
+                    Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
@@ -1386,31 +1421,32 @@ namespace GitConfigTool.ViewModels
         {
             if (string.IsNullOrEmpty(DeviceCode))
             {
-                MessageBox.Show("还没有获取到设备码，请稍候或重新点击「登录新账号」。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(Helpers.Localization.T("msg.no_device_code"), Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
             try
             {
                 Clipboard.SetText(DeviceCode);
-                StatusMessage = "设备码 " + DeviceCode + " 已复制到剪贴板";
+                StatusMessage = Helpers.Localization.T("rt.177") + DeviceCode + Helpers.Localization.T("rt.178");
             }
             catch (Exception ex)
             {
-                MessageBox.Show("复制失败：" + ex.Message, "提示", MessageBoxButton.OK, MessageBoxImage.Warning);
+                MessageBox.Show(Helpers.Localization.T("msg.copy_failed") + ex.Message, Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Warning);
             }
         }
 
         /// <summary>
         /// 刷新 gh 账号列表，并把 gh 的原始输出追加到命令记录
         /// </summary>
-        private async Task RefreshGithubFromLogAsync(string reason = null)
+        private async Task RefreshGithubFromLogAsync(string reason = null,
+            IProgress<(string Text, int Percent)> progress = null)
         {
             AppendCommandLine("gh auth status" + (string.IsNullOrEmpty(reason) ? "" : "   （" + reason + "）"));
-            await RefreshGithubAsync();
+            await RefreshGithubAsync(progress);
             if (GithubAccounts.Count == 0)
-                AppendResultLog("(当前没有任何已登录的 GitHub 账号)");
+                AppendResultLog(Helpers.Localization.T("rt.179"));
             else
-                AppendResultLog(GhAuthStatus.Length > 0 ? GhAuthStatus : "(无输出)");
+                AppendResultLog(GhAuthStatus.Length > 0 ? GhAuthStatus : Helpers.Localization.T("rt.180"));
         }
 
         /// <summary>
@@ -1431,13 +1467,13 @@ namespace GitConfigTool.ViewModels
                 if (removed.Count == 0) return 0;
 
                 foreach (var target in removed)
-                    AppendSuccessLog("已清理残留凭据: " + target);
+                    AppendSuccessLog(Helpers.Localization.T("rt.181") + target);
 
                 return removed.Count;
             }
             catch (Exception ex)
             {
-                AppendErrorLog("清理残留凭据失败: " + ex.Message);
+                AppendErrorLog(Helpers.Localization.T("rt.182") + ex.Message);
                 return 0;
             }
         }
@@ -1531,17 +1567,17 @@ namespace GitConfigTool.ViewModels
             var target = account ?? SelectedGithubAccount;
             if (target == null)
             {
-                MessageBox.Show("请先选择要退出的账号。", "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                MessageBox.Show(Helpers.Localization.T("msg.select_logout_account"), Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Information);
                 return;
             }
 
             var confirm = MessageBox.Show(
-                $"确定退出登录 {target.Username} @ {target.Host} 吗？\n\n退出后凭据将被删除，此操作不可撤销。",
-                "确认退出登录", MessageBoxButton.YesNo, MessageBoxImage.Warning);
+                Helpers.Localization.T("msg.confirm_logout", target.Username, target.Host),
+                Helpers.Localization.T("msg.title_confirm_logout"), MessageBoxButton.YesNo, MessageBoxImage.Warning);
             if (confirm != MessageBoxResult.Yes) return;
 
             IsBusy = true;
-            StatusMessage = $"正在退出 GitHub 账号 {target.Username}...";
+            StatusMessage = Helpers.Localization.T("rt.183", target.Username);
             try
             {
                 AppendCommandLine("gh auth logout --hostname " + target.Host + " --user " + target.Username);
@@ -1549,23 +1585,23 @@ namespace GitConfigTool.ViewModels
                 if (result.Success)
                 {
                     SelectedGithubAccount = null;
-                    await RefreshGithubFromLogAsync("退出登录后刷新");
+                    await RefreshGithubFromLogAsync(Helpers.Localization.T("rt.184"));
                     // gh auth logout 不会清理 keyring，这里补上
                     var cleaned = CleanupOrphanedCredentials();
                     StatusMessage = cleaned > 0
-                        ? $"已退出登录 {target.Username}，并清理 {cleaned} 条残留凭据"
-                        : $"已退出登录 {target.Username}";
+                        ? Helpers.Localization.T("rt.185", target.Username, cleaned)
+                        : Helpers.Localization.T("rt.186", target.Username);
                 }
                 else
                 {
-                    StatusMessage = "退出失败: " + result.Message;
-                    MessageBox.Show(result.Message, "退出失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                    StatusMessage = Helpers.Localization.T("rt.187") + result.Message;
+                    MessageBox.Show(result.Message, Helpers.Localization.T("msg.logout_failed"), MessageBoxButton.OK, MessageBoxImage.Error);
                 }
             }
             catch (Exception ex)
             {
-                StatusMessage = "退出异常: " + ex.Message;
-                MessageBox.Show(ex.Message, "退出异常", MessageBoxButton.OK, MessageBoxImage.Error);
+                StatusMessage = Helpers.Localization.T("rt.188") + ex.Message;
+                MessageBox.Show(ex.Message, Helpers.Localization.T("msg.logout_exception"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
             finally
             {
@@ -1587,7 +1623,7 @@ namespace GitConfigTool.ViewModels
             var dir = System.IO.Path.GetDirectoryName(path);
             if (string.IsNullOrEmpty(dir))
             {
-                MessageBox.Show("无法解析目录路径", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(Helpers.Localization.T("msg.bad_dir_path"), Helpers.Localization.T("msg.title_error"), MessageBoxButton.OK, MessageBoxImage.Error);
                 return;
             }
             if (!System.IO.Directory.Exists(dir))
@@ -1595,7 +1631,7 @@ namespace GitConfigTool.ViewModels
                 try { System.IO.Directory.CreateDirectory(dir); }
                 catch (Exception ex)
                 {
-                    MessageBox.Show("目录不存在且创建失败: " + ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                    MessageBox.Show(Helpers.Localization.T("msg.dir_create_failed") + ex.Message, Helpers.Localization.T("msg.title_error"), MessageBoxButton.OK, MessageBoxImage.Error);
                     return;
                 }
             }
@@ -1610,7 +1646,7 @@ namespace GitConfigTool.ViewModels
             }
             catch (Exception ex)
             {
-                MessageBox.Show("无法打开目录: " + ex.Message, "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(Helpers.Localization.T("msg.open_dir_failed") + ex.Message, Helpers.Localization.T("msg.title_error"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1639,7 +1675,7 @@ namespace GitConfigTool.ViewModels
                     // 文件还不存在（首次使用）：打开所在目录
                     if (string.IsNullOrEmpty(dir) || !System.IO.Directory.Exists(dir))
                     {
-                        MessageBox.Show("目录不存在: " + (dir ?? path), "提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                        MessageBox.Show(Helpers.Localization.T("msg.dir_missing") + (dir ?? path), Helpers.Localization.T("msg.title_hint"), MessageBoxButton.OK, MessageBoxImage.Information);
                         return;
                     }
                     System.Diagnostics.Process.Start(new System.Diagnostics.ProcessStartInfo
@@ -1649,12 +1685,12 @@ namespace GitConfigTool.ViewModels
                         UseShellExecute = true
                     });
                 }
-                StatusMessage = "已在资源管理器中定位: " + path;
+                StatusMessage = Helpers.Localization.T("rt.189") + path;
             }
             catch (Exception ex)
             {
-                MessageBox.Show("无法打开所在目录: " + ex.Message + "\n\n路径: " + path,
-                    "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(Helpers.Localization.T("msg.open_parent_failed") + ex.Message + Helpers.Localization.T("msg.path_suffix") + path,
+                    Helpers.Localization.T("msg.title_error"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
@@ -1665,18 +1701,19 @@ namespace GitConfigTool.ViewModels
             if (result.Success)
             {
                 SelectedConfigItem.IsModified = false;
-                StatusMessage = $"已保存 {SelectedConfigItem.FullKey}";
+                StatusMessage = Helpers.Localization.T("rt.190", SelectedConfigItem.FullKey);
             }
             else
             {
-                MessageBox.Show(result.Message, "保存失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(result.Message, Helpers.Localization.T("msg.save_failed"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 
         private async Task DeleteSelectedConfigItemAsync()
         {
             if (SelectedConfigItem == null) return;
-            var r = MessageBox.Show($"确定删除配置项 {SelectedConfigItem.FullKey} 吗？", "确认",
+            var r = MessageBox.Show(Helpers.Localization.T("msg.confirm_delete_config", SelectedConfigItem.FullKey),
+                Helpers.Localization.T("msg.title_confirm"),
                 MessageBoxButton.YesNo, MessageBoxImage.Question);
             if (r != MessageBoxResult.Yes) return;
 
@@ -1685,11 +1722,11 @@ namespace GitConfigTool.ViewModels
             {
                 ConfigItems.Remove(SelectedConfigItem);
                 SelectedConfigItem = null;
-                StatusMessage = "配置项已删除";
+                StatusMessage = Helpers.Localization.T("rt.191");
             }
             else
             {
-                MessageBox.Show(result.Message, "删除失败", MessageBoxButton.OK, MessageBoxImage.Error);
+                MessageBox.Show(result.Message, Helpers.Localization.T("msg.delete_failed"), MessageBoxButton.OK, MessageBoxImage.Error);
             }
         }
 

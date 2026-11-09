@@ -35,7 +35,7 @@ namespace GitConfigTool.Models
         public LogKind Kind { get; set; } = LogKind.Info;
 
         /// <summary>命令条目显示为「执行:」，其他类型为空</summary>
-        public string Label => Kind == LogKind.Command ? "执行:" : string.Empty;
+        public string Label => Kind == LogKind.Command ? Helpers.Localization.T("rt.027") : string.Empty;
 
         /// <summary>正文内容</summary>
         public string Text { get; set; } = string.Empty;
