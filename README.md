@@ -6,7 +6,7 @@
 [![Runtime](https://img.shields.io/badge/Runtime-.NET_Framework_4.8-512BD4?logo=dotnet&logoColor=white)](https://dotnet.microsoft.com/download/dotnet-framework)
 [![Language](https://img.shields.io/badge/Language-C%23-239120?logo=csharp&logoColor=white)](https://learn.microsoft.com/dotnet/csharp/)
 [![UI](https://img.shields.io/badge/UI-WPF-68217A?logo=dotnet&logoColor=white)](https://learn.microsoft.com/dotnet/desktop/wpf/)
-[![License](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![License](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE)
 
 > **Windows平台 `Git` 多账号快速切换工具**
 
@@ -189,4 +189,4 @@ GitConfigTool
 
 ## ⚖️ 许可证
 
-本项目采用 MIT 许可证 - 详情请参阅 [LICENSE](LICENSE) 文件
+本项目采用 GNU General Public License v3.0 许可证 - 详情请参阅 [LICENSE](LICENSE) 文件
